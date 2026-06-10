@@ -46,8 +46,8 @@ namespace G10::GB
     auto Timer::Clock (const std::uint64_t& pCycle) -> bool
     {
         // Component Clock Rate: 1 Dot per 2 CPU Cycles
-        // if ((pCycle & 1) != 1)
-        //     { return true; }
+        if ((pCycle & 1) != 1)
+            { return true; }
 
         // Check to see if the system's CPU is in a `STOP` state, or in the
         // middle of a speed switch.

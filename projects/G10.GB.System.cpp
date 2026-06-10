@@ -327,6 +327,10 @@ namespace G10::GB
 
         mProgram = pProgram;
         mProgramMetadata = std::move(*metadata);
+
+        mRAM.ResizeWorkRAM(mProgramMetadata.mRequestedWramSize);
+        mRAM.ResizeExternalRAM(mProgramMetadata.mRequestedSramSize);
+
         Reset();
         mCore.SetProgramCounter(mProgram->GetEntryPoint());
         return {};

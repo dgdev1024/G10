@@ -106,11 +106,11 @@ namespace G10::GB
         // - 1 Dot per 4 CPU Cycles in High Speed
         bool isHighSpeed = mSystem.GetCPU().IsHighSpeed();
         if (isHighSpeed == true)
-        // {
-        //     if ((pCycle & 3) != 3)
-        //         { return true; }
-        // }
-        // else
+        {
+            if ((pCycle & 3) != 3)
+                { return true; }
+        }
+        else
         {
             if ((pCycle & 1) != 1)
                 { return true; }
@@ -1888,7 +1888,6 @@ namespace G10::GB
 
     auto PPU::TickVerticalBlank () -> void
     {
-        mFrameJustFinished = false;
         if (mLineDots >= kDotsPerScanline)
         {
             IncrementScanline();
@@ -1900,6 +1899,7 @@ namespace G10::GB
                 mWindowScanline = 0;
                 mWindowTriggered = false;
                 mWYConditionMet = false;
+                mFrameJustFinished = false;
                 EnterDisplayMode(DisplayMode::ObjectScan);
             }
             else

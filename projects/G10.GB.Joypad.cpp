@@ -80,6 +80,7 @@ namespace G10::GB
         // - Note: Here, clear is true and set is false.
         mState.mButtonsSelected = (pDataIn & (1 << 5)) == 0;
         mState.mDirectionsSelected = (pDataIn & (1 << 4)) == 0;
+
         return true;
     }
 }
@@ -100,41 +101,49 @@ namespace G10::GB
                 wasReleased = (mState.mA == false);
                 nowPressed = true;
                 groupSelected = mState.mButtonsSelected;
+                mState.mA = true;
                 break;
             case JoypadButton::B:
                 wasReleased = (mState.mB == false);
                 nowPressed = true;
                 groupSelected = mState.mButtonsSelected;
+                mState.mB = true;
                 break;
             case JoypadButton::Select:
                 wasReleased = (mState.mSelect == false);
                 nowPressed = true;
                 groupSelected = mState.mButtonsSelected;
+                mState.mSelect = true;
                 break;
             case JoypadButton::Start:
                 wasReleased = (mState.mStart == false);
                 nowPressed = true;
                 groupSelected = mState.mButtonsSelected;
+                mState.mStart = true;
                 break;
             case JoypadButton::Up:
                 wasReleased = (mState.mUp == false);
                 nowPressed = true;
                 groupSelected = mState.mDirectionsSelected;
+                mState.mUp = true;
                 break;
             case JoypadButton::Down:
                 wasReleased = (mState.mDown == false);
                 nowPressed = true;
                 groupSelected = mState.mDirectionsSelected;
+                mState.mDown = true;
                 break;
             case JoypadButton::Left:
                 wasReleased = (mState.mLeft == false);
                 nowPressed = true;
                 groupSelected = mState.mDirectionsSelected;
+                mState.mLeft = true;
                 break;
             case JoypadButton::Right:
                 wasReleased = (mState.mRight == false);
                 nowPressed = true;
                 groupSelected = mState.mDirectionsSelected;
+                mState.mRight = true;
                 break;
         }
 
@@ -164,34 +173,42 @@ namespace G10::GB
             case JoypadButton::A:
                 wasPressed = (mState.mA == true);
                 nowReleased = true;
+                mState.mA = false;
                 break;
             case JoypadButton::B:
                 wasPressed = (mState.mB == true);
                 nowReleased = true;
+                mState.mB = false;
                 break;
             case JoypadButton::Select:
                 wasPressed = (mState.mSelect == true);
                 nowReleased = true;
+                mState.mSelect = false;
                 break;
             case JoypadButton::Start:
                 wasPressed = (mState.mStart == true);
                 nowReleased = true;
+                mState.mStart = false;
                 break;
             case JoypadButton::Up:
                 wasPressed = (mState.mUp == true);
                 nowReleased = true;
+                mState.mUp = false;
                 break;
             case JoypadButton::Down:
                 wasPressed = (mState.mDown == true);
                 nowReleased = true;
+                mState.mDown = false;
                 break;
             case JoypadButton::Left:
                 wasPressed = (mState.mLeft == true);
                 nowReleased = true;
+                mState.mLeft = false;
                 break;
             case JoypadButton::Right:
                 wasPressed = (mState.mRight == true);
                 nowReleased = true;
+                mState.mRight = false;
                 break;
         }
 

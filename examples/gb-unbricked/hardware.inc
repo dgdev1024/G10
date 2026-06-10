@@ -78,6 +78,15 @@
 .const bJOYP_LEFT           = 1
 .const bJOYP_RIGHT          = 0
 
+.const bJOYP_PAD_DOWN       = 7
+.const bJOYP_PAD_UP         = 6
+.const bJOYP_PAD_LEFT       = 5
+.const bJOYP_PAD_RIGHT      = 4
+.const bJOYP_PAD_START      = 3
+.const bJOYP_PAD_SELECT     = 2
+.const bJOYP_PAD_B          = 1
+.const bJOYP_PAD_A          = 0
+
 .const JOYP_GET             = %00110000
 .const JOYP_GET_BUTTONS     = %00010000
 .const JOYP_GET_DPAD        = %00100000
@@ -91,6 +100,17 @@
 .const JOYP_UP              = (1 << bJOYP_UP)
 .const JOYP_LEFT            = (1 << bJOYP_LEFT)
 .const JOYP_RIGHT           = (1 << bJOYP_RIGHT)
+
+.const JOYP_PAD_CTRL_PAD    = %11110000
+.const JOYP_PAD_BUTTONS     = %00001111
+.const JOYP_PAD_DOWN        = (1 << bJOYP_PAD_DOWN)
+.const JOYP_PAD_UP          = (1 << bJOYP_PAD_UP)
+.const JOYP_PAD_LEFT        = (1 << bJOYP_PAD_LEFT)
+.const JOYP_PAD_RIGHT       = (1 << bJOYP_PAD_RIGHT)
+.const JOYP_PAD_START       = (1 << bJOYP_PAD_START)
+.const JOYP_PAD_SELECT      = (1 << bJOYP_PAD_SELECT)
+.const JOYP_PAD_B           = (1 << bJOYP_PAD_B)
+.const JOYP_PAD_A           = (1 << bJOYP_PAD_A)
 
 ; Port Registers - `SB` and `SC` ***********************************************
 

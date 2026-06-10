@@ -680,11 +680,13 @@ namespace G10::CPU
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
-        return
+        bool good = 
             pCore.FetchMemoryB(imm) &&
             pCore.ReadRegisterLB(0, acc) &&
             PerformADD8(pCore, false, acc, imm, res) &&
             pCore.WriteRegisterLB(0, res);
+
+        return good;
     }
 
     auto Executive::ExecuteADD_L0_LY (Core& pCore, const Instruction& pInst) -> bool

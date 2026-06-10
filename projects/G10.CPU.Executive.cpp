@@ -158,12 +158,6 @@ namespace G10::CPU
             pCore.mInstructionRegister = raw;
             pCore.mImmediateData = raw;
 
-            // debug("IP = ${:08X} | OP = 0x{:02X} | PX = 0x{:01X} | PY = 0x{:01X}",
-            //     pCore.mInstructionPointer, 
-            //     pCore.mInstructionRegister.mOpcode,
-            //     pCore.mInstructionRegister.mParamX,
-            //     pCore.mInstructionRegister.mParamY);
-
             if (good == false)
                 { return false; }
         }

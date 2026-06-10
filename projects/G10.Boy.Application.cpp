@@ -327,10 +327,10 @@ namespace G10::Boy
             auto& joypad = mSystem.GetJoypad();
             switch (event.key)
             {
-                case SDLK_W:        joypad.PressButton(GB::JoypadButton::Right); break;
+                case SDLK_W:        joypad.PressButton(GB::JoypadButton::Up); break;
                 case SDLK_A:        joypad.PressButton(GB::JoypadButton::Left); break;
-                case SDLK_S:        joypad.PressButton(GB::JoypadButton::Up); break;
-                case SDLK_D:        joypad.PressButton(GB::JoypadButton::Down); break;
+                case SDLK_S:        joypad.PressButton(GB::JoypadButton::Down); break;
+                case SDLK_D:        joypad.PressButton(GB::JoypadButton::Right); break;
                 case SDLK_J:        joypad.PressButton(GB::JoypadButton::A); break;
                 case SDLK_K:        joypad.PressButton(GB::JoypadButton::B); break;
                 case SDLK_RETURN:   joypad.PressButton(GB::JoypadButton::Start); break;
@@ -346,14 +346,52 @@ namespace G10::Boy
             auto& joypad = mSystem.GetJoypad();
             switch (event.key)
             {
-                case SDLK_W:        joypad.ReleaseButton(GB::JoypadButton::Right); break;
+                case SDLK_W:        joypad.ReleaseButton(GB::JoypadButton::Up); break;
                 case SDLK_A:        joypad.ReleaseButton(GB::JoypadButton::Left); break;
-                case SDLK_S:        joypad.ReleaseButton(GB::JoypadButton::Up); break;
-                case SDLK_D:        joypad.ReleaseButton(GB::JoypadButton::Down); break;
+                case SDLK_S:        joypad.ReleaseButton(GB::JoypadButton::Down); break;
+                case SDLK_D:        joypad.ReleaseButton(GB::JoypadButton::Right); break;
                 case SDLK_J:        joypad.ReleaseButton(GB::JoypadButton::A); break;
                 case SDLK_K:        joypad.ReleaseButton(GB::JoypadButton::B); break;
                 case SDLK_RETURN:   joypad.ReleaseButton(GB::JoypadButton::Start); break;
                 case SDLK_SPACE:    joypad.ReleaseButton(GB::JoypadButton::Select); break;
+            }
+        }
+    }
+
+    auto Application::HandleGamepadDownEvent (const SDL_GamepadButtonEvent& event) -> void
+    {
+        if (mFocusEmulationWindow == true)
+        {
+            auto& joypad = mSystem.GetJoypad();
+            switch (event.button)
+            {
+                case SDL_GAMEPAD_BUTTON_DPAD_UP:        joypad.PressButton(GB::JoypadButton::Up); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_DOWN:      joypad.PressButton(GB::JoypadButton::Down); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_LEFT:      joypad.PressButton(GB::JoypadButton::Left); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:     joypad.PressButton(GB::JoypadButton::Right); break;
+                case SDL_GAMEPAD_BUTTON_SOUTH:           joypad.PressButton(GB::JoypadButton::A); break;
+                case SDL_GAMEPAD_BUTTON_EAST:              joypad.PressButton(GB::JoypadButton::B); break;
+                case SDL_GAMEPAD_BUTTON_START:          joypad.PressButton(GB::JoypadButton::Start); break;
+                case SDL_GAMEPAD_BUTTON_BACK:           joypad.PressButton(GB::JoypadButton::Select); break;
+            }
+        }
+    }
+
+    auto Application::HandleGamepadUpEvent (const SDL_GamepadButtonEvent& event) -> void
+    {
+        if (mFocusEmulationWindow == true)
+        {
+            auto& joypad = mSystem.GetJoypad();
+            switch (event.button)
+            {
+                case SDL_GAMEPAD_BUTTON_DPAD_UP:        joypad.ReleaseButton(GB::JoypadButton::Up); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_DOWN:      joypad.ReleaseButton(GB::JoypadButton::Down); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_LEFT:      joypad.ReleaseButton(GB::JoypadButton::Left); break;
+                case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:     joypad.ReleaseButton(GB::JoypadButton::Right); break;
+                case SDL_GAMEPAD_BUTTON_SOUTH:           joypad.ReleaseButton(GB::JoypadButton::A); break;
+                case SDL_GAMEPAD_BUTTON_EAST:              joypad.ReleaseButton(GB::JoypadButton::B); break;
+                case SDL_GAMEPAD_BUTTON_START:          joypad.ReleaseButton(GB::JoypadButton::Start); break;
+                case SDL_GAMEPAD_BUTTON_BACK:           joypad.ReleaseButton(GB::JoypadButton::Select); break;
             }
         }
     }
@@ -366,10 +404,12 @@ namespace G10::Boy
             ImGui_ImplSDL3_ProcessEvent(&event);
             switch (event.type)
             {
-                case SDL_EVENT_QUIT:            HandleQuitEvent(); break;
-                case SDL_EVENT_KEY_DOWN:        HandleKeyDownEvent(event.key); break;
-                case SDL_EVENT_KEY_UP:          HandleKeyUpEvent(event.key); break;
-                default:                        break;
+                case SDL_EVENT_QUIT:                HandleQuitEvent(); break;
+                case SDL_EVENT_KEY_DOWN:            HandleKeyDownEvent(event.key); break;
+                case SDL_EVENT_KEY_UP:              HandleKeyUpEvent(event.key); break;
+                case SDL_EVENT_GAMEPAD_BUTTON_DOWN: HandleGamepadDownEvent(event.gbutton); break;
+                case SDL_EVENT_GAMEPAD_BUTTON_UP:   HandleGamepadUpEvent(event.gbutton); break;
+                default:                            break;
             }
         }
     }

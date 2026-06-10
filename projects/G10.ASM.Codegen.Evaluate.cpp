@@ -177,6 +177,8 @@ namespace G10::ASM
         {
             if (const auto r = EvaluateRegisterExpression(ptr->mExpression))
                 { return std::make_pair(r->first, r->second); }
+            else if (const auto b = EvaluateBinaryExpression(ptr->mExpression))
+                { return *b; }
             else if (const auto i = EvaluateIntegerExpression(ptr->mExpression))
                 { return *i; }
             else if (const auto l = EvaluateLabelExpression(ptr->mExpression))

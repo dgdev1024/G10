@@ -69,6 +69,8 @@ namespace G10::Boy
         auto HandleQuitEvent () -> void;
         auto HandleKeyDownEvent (const SDL_KeyboardEvent& event) -> void;
         auto HandleKeyUpEvent (const SDL_KeyboardEvent& event) -> void;
+        auto HandleGamepadDownEvent (const SDL_GamepadButtonEvent& event) -> void;
+        auto HandleGamepadUpEvent (const SDL_GamepadButtonEvent& event) -> void;
         auto HandleEvents () -> void;
         auto Update () -> void;
         auto UpdateGUI () -> void;
