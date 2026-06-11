@@ -96,6 +96,14 @@ namespace G10::Boy
     private: // Methods - Emulation Window GUI *********************************
 
         auto UpdateEmulationWindowGUI () -> void;
+        
+    private: // Methods - Registers Window GUI *********************************
+
+        auto UpdateRegistersWindowGUI () -> void;
+
+    private: // Methods - Memory Window GUI ************************************
+
+        auto UpdateMemoryWindowGUI () -> void;
 
     private: // Members ********************************************************
 
@@ -121,8 +129,21 @@ namespace G10::Boy
 
         bool        mShowDemoWindow { false };
         bool        mShowEmulationWindow { true };
+        bool        mShowRegistersWindow { true };
+        bool        mShowMemoryWindow { true };
+
         bool        mHoverEmulationWindow { false };
+        bool        mHoverRegistersWindow { false };
+        bool        mHoverMemoryWindow { false };
+
         bool        mFocusEmulationWindow { false };
+        bool        mFocusRegistersWindow { false };
+        bool        mFocusMemoryWindow { false };
+
+        bool        mFirstFrame { false };
+
+        std::uint32_t   mMemoryViewingAddress { 0x00000000 };
+        bool            mMemoryFollowPC { true };
 
     };
 }

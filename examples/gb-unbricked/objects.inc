@@ -21,3 +21,14 @@ paddle_right:
     .word `00000000
     .word `00000000
 paddle_right_end:
+
+ball:
+    .word `00033000
+    .word `00322300
+    .word `03222230
+    .word `32211223
+    .word `32211223
+    .word `03222230
+    .word `00322300
+    .word `00033000
+ball_end:

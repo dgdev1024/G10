@@ -121,6 +121,14 @@ namespace G10::CPU
             { return mSpeedRegister.mHigh == true; }
         inline auto GetTicks () const -> const std::uint64_t&
             { return mTicksConsumed; }
+        inline auto GetRegister (std::uint8_t pIndex) const -> std::uint32_t
+            { return mRegisters[pIndex & 0xF]; }
+        inline auto GetProgramCounter () const -> std::uint32_t
+            { return mProgramCounter; }
+        inline auto GetStackPointer () const -> std::uint32_t
+            { return mStackPointer; }
+        inline auto GetFlagsRegister () const -> std::uint8_t
+            { return mFlagsRegister.mValue; }
         inline auto SetProgramCounter (std::uint32_t pValue) -> void
             { mProgramCounter = pValue; }
 

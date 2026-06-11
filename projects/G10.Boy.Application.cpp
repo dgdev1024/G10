@@ -117,13 +117,19 @@ namespace G10::Boy
 
         while (mRunning == true)
         {
-            if (mShowEmulationWindow == true)
+            if (mShowEmulationWindow == true && mFocusEmulationWindow == true)
                 { mSystem.StepFrame(); }
 
             HandleEvents();
             Update();
             UpdateGUI();
             Render();
+
+            if (mShowEmulationWindow == true && mFirstFrame == true)
+            {
+                mFirstFrame = false;
+                ImGui::SetWindowFocus("Emulation");
+            }
 
             ++frameCount;
             const std::uint64_t now = SDL_GetTicksNS();
@@ -442,8 +448,12 @@ namespace G10::Boy
 
         if (mShowDemoWindow == true)
             { ImGui::ShowDemoWindow(&mShowDemoWindow); }
-        if (mShowEmulationWindow == true)
+        if (mShowEmulationWindow == true && mProgramFilename.empty() == false)
             { UpdateEmulationWindowGUI(); }
+        if (mShowRegistersWindow == true && mProgramFilename.empty() == false)
+            { UpdateRegistersWindowGUI(); }
+        if (mShowMemoryWindow == true && mProgramFilename.empty() == false)
+            { UpdateMemoryWindowGUI(); }
     }
 
     auto Application::Render () -> void
@@ -506,6 +516,7 @@ namespace G10::Boy
             kApplicationWindowTitle);
         SetWindowTitle(mWindow, "{}", mWindowTitleBase);
 
+        mFirstFrame = true;
         return true;
     }
 
@@ -625,7 +636,12 @@ namespace G10::Boy
     {
         if (ImGui::BeginMenu("View"))
         {
-            ImGui::MenuItem("Emulation Window", nullptr, &mShowEmulationWindow);
+            ImGui::MenuItem("Emulation Window", nullptr, &mShowEmulationWindow, 
+                (mProgramFilename.empty() == false));
+            ImGui::MenuItem("Registers Window", nullptr, &mShowRegistersWindow, 
+                (mProgramFilename.empty() == false));
+            ImGui::MenuItem("Memory Window", nullptr, &mShowMemoryWindow, 
+                (mProgramFilename.empty() == false));
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo Window", nullptr, &mShowDemoWindow);
 
@@ -660,5 +676,99 @@ namespace G10::Boy
         }
         ImGui::End();
         ImGui::PopStyleVar(1);
+    }
+}
+
+// Private Methods - Registers Window GUI **************************************
+
+namespace G10::Boy
+{
+    auto Application::UpdateRegistersWindowGUI () -> void
+    {
+        ImGui::Begin("Registers", &mShowRegistersWindow);
+        {
+            const auto& cpu = mSystem.GetCPU();
+            auto flags = std::format("0b{:08b}", cpu.GetFlagsRegister());
+            
+            mHoverRegistersWindow = ImGui::IsWindowHovered();
+            mFocusRegistersWindow = ImGui::IsWindowFocused();
+
+            // Present the registers in a table formatted as follows:
+            // - Register names on the left, left-aligned.
+            // - Register values on the right, right-aligned.
+            ImGui::Columns(2, "registers", false);
+            for (std::uint8_t i = 0; i < 0x10; ++i)
+            {
+                ImGui::Text("D%d", i);                      ImGui::NextColumn();
+                ImGui::Text("0x%08X", cpu.GetRegister(i));  ImGui::NextColumn();
+            }
+
+            ImGui::Text("Flags");                           ImGui::NextColumn();
+            ImGui::Text("%s", flags.c_str());               ImGui::NextColumn();
+            ImGui::Text("PC");                              ImGui::NextColumn();
+            ImGui::Text("$%08X", cpu.GetProgramCounter());  ImGui::NextColumn();
+            ImGui::Text("SP");                              ImGui::NextColumn();
+            ImGui::Text("$%08X", cpu.GetStackPointer());    ImGui::NextColumn();
+
+            ImGui::Columns(1);
+        }
+        ImGui::End();
+    }
+}
+
+// Private Methods - Memory Window GUI *****************************************
+
+namespace G10::Boy
+{
+    auto Application::UpdateMemoryWindowGUI () -> void
+    {
+        ImGui::Begin("Memory", &mShowMemoryWindow);
+        {
+            const auto& pc = mSystem.GetCPU().GetProgramCounter();
+            const auto address = (mMemoryFollowPC == true) ?
+                (pc & ~0b1111111) : (mMemoryViewingAddress & ~0b1111111);
+            std::uint8_t byte = 0;
+
+            mHoverMemoryWindow = ImGui::IsWindowHovered();
+            mFocusMemoryWindow = ImGui::IsWindowFocused();
+
+            // Present the memory contents in a table format, with one column
+            // for at least every eight bytes displayed, depending upon the
+            // width of the content region:
+            // - Address of the first byte displayed this column to the left.
+            // - Values of at least eight bytes displayed in the row to the right,
+            //   depending on the width of the content region.
+            for (std::uint32_t i = 0; i < 16; ++i)
+            {
+                ImGui::Text("$%08X", address + (i * 8));
+                ImGui::SameLine();
+                for (std::uint32_t j = 0; j < 8; ++j)
+                {
+                    mSystem.Read(address + (i * 8) + j, byte);
+
+                    // If this is the byte at the program counter, highlight it
+                    if (address + (i * 8) + j == pc)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                        ImGui::Text("%02X", byte);
+                        ImGui::PopStyleColor();
+                    }
+                    else
+                    {
+                        ImGui::Text("%02X", byte);
+                    }
+
+                    if (j < 7)
+                        { ImGui::SameLine(); }
+                }
+            }
+
+            ImGui::Text("Viewing Address: $%08X", address);
+            ImGui::Text("Go To Address: "); ImGui::SameLine();
+            ImGui::InputScalar("##GoToAddress", ImGuiDataType_U32, &mMemoryViewingAddress,
+                nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
+            ImGui::Checkbox("Follow PC", &mMemoryFollowPC);
+        }
+        ImGui::End();
     }
 }
