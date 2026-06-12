@@ -31,6 +31,9 @@ namespace G10::GB
         std::ranges::fill(mBgColorRAM, 0x00);
         std::ranges::fill(mObjColorRAM, 0x00);
         std::ranges::fill(mFrameBuffer, 0xFF);
+        std::ranges::fill(mRenderedVRAM0, 0xFF);
+        std::ranges::fill(mRenderedVRAM1, 0xFF);
+        std::ranges::fill(mRenderedOAM, 0xFF);
         std::ranges::copy(kDefaultMonochromeColors, mMonochromeColors.begin());
 
         // Initialize Port Registers
@@ -994,6 +997,82 @@ namespace G10::GB
     auto PPU::IsVramDmaActive () const -> bool
     {
         return mVramDmaActive == true && mVramDmaBlocksLeft > 0;
+    }
+}
+
+// Public Methods - Rendering **************************************************
+
+namespace G10::GB
+{
+    auto PPU::RenderVideoRAM (bool pBank1) -> std::span<std::uint32_t>
+    {
+        // Select the appropriate source memory bank and target destination render buffer
+        const auto& vram = pBank1 ? mVideoRAM1 : mVideoRAM0;
+        auto& renderBuffer = pBank1 ? mRenderedVRAM1 : mRenderedVRAM0;
+
+        for (std::uint32_t i = 0; i < kVramTilesPerBank; ++i)
+        {
+            std::uint32_t offset = i * kVramBytesPerTile;
+            for (std::uint8_t row = 0; row < 8; ++row)
+            {
+                std::uint8_t    byte0 = vram[offset + (row * 2)],
+                                byte1 = vram[offset + (row * 2) + 1];
+                for (std::uint8_t col = 0; col < 8; ++col)
+                {
+                    std::uint8_t    bit =   7 - col,
+                                    color = ((byte0 >> bit) & 1) | 
+                                            (((byte1 >> bit) & 1) << 1);
+                    std::uint32_t   pixel = ((i / 16) * 8 + row) * 
+                                            (16 * 8) +
+                                            (i % 16) * 8 + col;
+                    renderBuffer[pixel] = GetPixelColor(color, 0, false);
+                }
+            }
+        }
+
+        return renderBuffer;
+    }
+
+    auto PPU::RenderOAM () -> std::span<std::uint32_t>
+    {
+        for (std::uint8_t i = 0; i < kObjectCount; ++i)
+        {
+            const auto& obj = GetObject(i);
+
+            // VRAM bank 0 or 1?
+            bool useVram1 = (IsUsingColorPalette() == true) ?
+                obj.mAttributes.mVramBank : false;
+            const auto& vram = (useVram1 == true) ? mVideoRAM1 : mVideoRAM0;
+
+            // Palette Index?
+            std::uint8_t paletteIndex = (IsUsingColorPalette() == true) ?
+                obj.mAttributes.mColorPalette : obj.mAttributes.mMonochromePalette;
+
+            // Flip Attributes?
+            bool    xFlip = obj.mAttributes.mXFlip,
+                    yFlip = obj.mAttributes.mYFlip;
+                
+            std::uint32_t offset = obj.mTileIndex * kVramBytesPerTile;
+            for (std::uint8_t row = 0; row < 8; ++row)
+            {
+                std::uint8_t srcRow = (yFlip == true) ? (7 - row) : row;
+                std::uint8_t
+                    byte0 = vram[offset + (srcRow * 2)],
+                    byte1 = vram[offset + (srcRow * 2) + 1];
+                for (std::uint8_t col = 0; col < 8; ++col)
+                {
+                    std::uint8_t    bit =   (xFlip == true) ? col : (7 - col),
+                                    color = ((byte0 >> bit) & 1) | 
+                                            (((byte1 >> bit) & 1) << 1);
+                    std::uint32_t   pixel = ((i / 8) * 8 + row) * 
+                                            (8 * 8) +
+                                            (i % 8) * 8 + col;
+                    mRenderedOAM[pixel] = GetPixelColor(color, paletteIndex, false);
+                }
+            }
+        }
+
+        return mRenderedOAM;
     }
 }
 

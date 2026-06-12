@@ -186,7 +186,7 @@ namespace G10::Boy
             kApplicationWindowTitle.data(),
             kApplicationWindowWidth,
             kApplicationWindowHeight,
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_MAXIMIZED
         );
         if (mWindow == nullptr)
         {
@@ -223,6 +223,48 @@ namespace G10::Boy
         {
             throw stx::runtime_error { 
                 "Could not create target texture: '{}'", SDL_GetError() };
+        }
+
+        // Rendered VRAM0 Texture
+        mVRAM0Texture = SDL_CreateTexture(
+            mRenderer,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            kRenderedVRAMTextureWidth,
+            kRenderedVRAMTextureHeight
+        );
+        if (mVRAM0Texture == nullptr)
+        {
+            throw stx::runtime_error { 
+                "Could not create VRAM0 texture: '{}'", SDL_GetError() };
+        }
+
+        // Rendered VRAM1 Texture
+        mVRAM1Texture = SDL_CreateTexture(
+            mRenderer,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            kRenderedVRAMTextureWidth,
+            kRenderedVRAMTextureHeight
+        );
+        if (mVRAM1Texture == nullptr)
+        {
+            throw stx::runtime_error { 
+                "Could not create VRAM1 texture: '{}'", SDL_GetError() };
+        }
+
+        // Rendered OAM Texture
+        mOAMTexture = SDL_CreateTexture(
+            mRenderer,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            kRenderedOAMTextureWidth,
+            kRenderedOAMTextureHeight
+        );
+        if (mOAMTexture == nullptr)
+        {
+            throw stx::runtime_error { 
+                "Could not create OAM texture: '{}'", SDL_GetError() };
         }
 
         // Audio Device
@@ -285,6 +327,9 @@ namespace G10::Boy
     auto Application::ShutdownSDL () -> void
     {
         if (mAudioStream != nullptr)    { SDL_PauseAudioStreamDevice(mAudioStream); SDL_DestroyAudioStream(mAudioStream); }
+        if (mVRAM0Texture != nullptr)   { SDL_DestroyTexture(mVRAM0Texture); }
+        if (mVRAM1Texture != nullptr)   { SDL_DestroyTexture(mVRAM1Texture); }
+        if (mOAMTexture != nullptr)     { SDL_DestroyTexture(mOAMTexture); }
         if (mTexture != nullptr)        { SDL_DestroyTexture(mTexture); }
         if (mRenderer != nullptr)       { SDL_DestroyRenderer(mRenderer); }
         if (mWindow != nullptr)         { SDL_DestroyWindow(mWindow); }
@@ -423,6 +468,7 @@ namespace G10::Boy
     auto Application::Update () -> void
     {
         if (mTexture != nullptr && 
+            mProgramFilename.empty() == false &&
             mShowEmulationWindow == true)
         {
             const auto& frameBuffer = mSystem.GetPPU().GetFrameBuffer();
@@ -454,6 +500,8 @@ namespace G10::Boy
             { UpdateRegistersWindowGUI(); }
         if (mShowMemoryWindow == true && mProgramFilename.empty() == false)
             { UpdateMemoryWindowGUI(); }
+        if (mShowTilesWindow == true && mProgramFilename.empty() == false)
+            { UpdateTilesWindowGUI(); }
     }
 
     auto Application::Render () -> void
@@ -642,6 +690,8 @@ namespace G10::Boy
                 (mProgramFilename.empty() == false));
             ImGui::MenuItem("Memory Window", nullptr, &mShowMemoryWindow, 
                 (mProgramFilename.empty() == false));
+            ImGui::MenuItem("Tiles Window", nullptr, &mShowTilesWindow, 
+                (mProgramFilename.empty() == false));
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo Window", nullptr, &mShowDemoWindow);
 
@@ -689,6 +739,8 @@ namespace G10::Boy
         {
             const auto& cpu = mSystem.GetCPU();
             auto flags = std::format("0b{:08b}", cpu.GetFlagsRegister());
+            auto ex = stx::under(cpu.GetException());
+            auto ex_pending = stx::under(cpu.GetExceptionPending());
             
             mHoverRegistersWindow = ImGui::IsWindowHovered();
             mFocusRegistersWindow = ImGui::IsWindowFocused();
@@ -705,6 +757,10 @@ namespace G10::Boy
 
             ImGui::Text("Flags");                           ImGui::NextColumn();
             ImGui::Text("%s", flags.c_str());               ImGui::NextColumn();
+            ImGui::Text("Pending Exception");               ImGui::NextColumn();
+            ImGui::Text("0x%02X", ex_pending);              ImGui::NextColumn();
+            ImGui::Text("Exception");                       ImGui::NextColumn();
+            ImGui::Text("0x%02X", ex);                      ImGui::NextColumn();
             ImGui::Text("PC");                              ImGui::NextColumn();
             ImGui::Text("$%08X", cpu.GetProgramCounter());  ImGui::NextColumn();
             ImGui::Text("SP");                              ImGui::NextColumn();
@@ -726,11 +782,34 @@ namespace G10::Boy
         {
             const auto& pc = mSystem.GetCPU().GetProgramCounter();
             const auto address = (mMemoryFollowPC == true) ?
-                (pc & ~0b1111111) : (mMemoryViewingAddress & ~0b1111111);
+                (pc & ~0b11111111) : (mMemoryViewingAddress & ~0b11111111);
             std::uint8_t byte = 0;
 
             mHoverMemoryWindow = ImGui::IsWindowHovered();
             mFocusMemoryWindow = ImGui::IsWindowFocused();
+
+            // If hovering, and we are not following the PC, we can scroll the
+            // viewing address by using the mouse wheel.
+            if (mHoverMemoryWindow == true && mMemoryFollowPC == false)
+            {
+                auto& io = ImGui::GetIO();
+                if (io.MouseWheel != 0)
+                {
+                    mMemoryViewingAddress += (io.MouseWheel > 0) ? -256 : 256;
+                }
+                else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+                {
+                    auto delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+                    if (delta.y != 0)
+                    {
+                        if (delta.y > 2)
+                            { mMemoryViewingAddress += 256; }
+                        else if (delta.y < -2)
+                            { mMemoryViewingAddress -= 256; }
+                        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+                    }
+                }
+            }
 
             // Present the memory contents in a table format, with one column
             // for at least every eight bytes displayed, depending upon the
@@ -740,14 +819,14 @@ namespace G10::Boy
             //   depending on the width of the content region.
             for (std::uint32_t i = 0; i < 16; ++i)
             {
-                ImGui::Text("$%08X", address + (i * 8));
+                ImGui::Text("$%08X", address + (i * 16));
                 ImGui::SameLine();
-                for (std::uint32_t j = 0; j < 8; ++j)
+                for (std::uint32_t j = 0; j < 16; ++j)
                 {
-                    mSystem.Read(address + (i * 8) + j, byte);
+                    mSystem.Read(address + (i * 16) + j, byte);
 
                     // If this is the byte at the program counter, highlight it
-                    if (address + (i * 8) + j == pc)
+                    if (address + (i * 16) + j == pc)
                     {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
                         ImGui::Text("%02X", byte);
@@ -758,7 +837,7 @@ namespace G10::Boy
                         ImGui::Text("%02X", byte);
                     }
 
-                    if (j < 7)
+                    if (j < 15)
                         { ImGui::SameLine(); }
                 }
             }
@@ -768,7 +847,106 @@ namespace G10::Boy
             ImGui::InputScalar("##GoToAddress", ImGuiDataType_U32, &mMemoryViewingAddress,
                 nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
             ImGui::Checkbox("Follow PC", &mMemoryFollowPC);
+
+            if (mMemoryFollowPC == true)
+            {
+                mMemoryViewingAddress = pc & ~0b11111111;
+            }
         }
         ImGui::End();
+    }
+}
+
+// Private Methods - Tiles Window GUI ******************************************
+
+namespace G10::Boy
+{
+    auto Application::UpdateTilesWindowGUI () -> void
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("Tiles", &mShowTilesWindow);
+        {
+            mHoverTilesWindow = ImGui::IsWindowHovered();
+            mFocusTilesWindow = ImGui::IsWindowFocused();
+
+            if (ImGui::BeginTabBar("##TilesTabBar", ImGuiTabBarFlags_None))
+            {
+                std::int32_t pitch = 0;
+                std::uint32_t* pixels = nullptr;
+
+                if (ImGui::BeginTabItem("VRAM0"))
+                {
+                    auto vram0 = mSystem.GetPPU().RenderVideoRAM(false);
+                    SDL_LockTexture(mVRAM0Texture, nullptr, reinterpret_cast<void**>(&pixels), &pitch);
+                    SDL_memcpy(pixels, vram0.data(), vram0.size() * sizeof(std::uint32_t));
+                    SDL_UnlockTexture(mVRAM0Texture);
+
+                    ImVec2
+                        cursorPos = ImGui::GetCursorPos(),
+                        windowSize = ImGui::GetContentRegionAvail(),
+                        scaleVec = ImVec2(windowSize.x / kRenderedVRAMTextureWidth, 
+                                          windowSize.y / kRenderedVRAMTextureHeight);
+                    float scale = (scaleVec.x < scaleVec.y) ? scaleVec.x : scaleVec.y;
+                    ImVec2
+                        imageSize = ImVec2(kRenderedVRAMTextureWidth * scale,
+                                           kRenderedVRAMTextureHeight * scale);
+
+                    ImGui::SetCursorPosX(cursorPos.x + (windowSize.x - imageSize.x) * 0.5f);
+                    ImGui::SetCursorPosY(cursorPos.y + (windowSize.y - imageSize.y) * 0.5f);
+                    ImGui::Image(mVRAM0Texture, imageSize);
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("VRAM1"))
+                {
+                    auto vram1 = mSystem.GetPPU().RenderVideoRAM(true);
+                    SDL_LockTexture(mVRAM1Texture, nullptr, reinterpret_cast<void**>(&pixels), &pitch);
+                    SDL_memcpy(pixels, vram1.data(), vram1.size() * sizeof(std::uint32_t));
+                    SDL_UnlockTexture(mVRAM1Texture);
+
+                    ImVec2
+                        cursorPos = ImGui::GetCursorPos(),
+                        windowSize = ImGui::GetContentRegionAvail(),
+                        scaleVec = ImVec2(windowSize.x / kRenderedVRAMTextureWidth, 
+                                          windowSize.y / kRenderedVRAMTextureHeight);
+                    float scale = (scaleVec.x < scaleVec.y) ? scaleVec.x : scaleVec.y;
+                    ImVec2
+                        imageSize = ImVec2(kRenderedVRAMTextureWidth * scale,
+                                           kRenderedVRAMTextureHeight * scale);
+
+                    ImGui::SetCursorPosX(cursorPos.x + (windowSize.x - imageSize.x) * 0.5f);
+                    ImGui::SetCursorPosY(cursorPos.y + (windowSize.y - imageSize.y) * 0.5f);
+                    ImGui::Image(mVRAM1Texture, imageSize);
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("OAM"))
+                {
+                    auto oam = mSystem.GetPPU().RenderOAM();
+                    SDL_LockTexture(mOAMTexture, nullptr, reinterpret_cast<void**>(&pixels), &pitch);
+                    SDL_memcpy(pixels, oam.data(), oam.size() * sizeof(std::uint32_t));
+                    SDL_UnlockTexture(mOAMTexture);
+
+                    ImVec2
+                        cursorPos = ImGui::GetCursorPos(),
+                        windowSize = ImGui::GetContentRegionAvail(),
+                        scaleVec = ImVec2(windowSize.x / kRenderedOAMTextureWidth, 
+                                          windowSize.y / kRenderedOAMTextureHeight);
+                    float scale = (scaleVec.x < scaleVec.y) ? scaleVec.x : scaleVec.y;
+                    ImVec2
+                        imageSize = ImVec2(kRenderedOAMTextureWidth * scale,
+                                           kRenderedOAMTextureHeight * scale);
+
+                    ImGui::SetCursorPosX(cursorPos.x + (windowSize.x - imageSize.x) * 0.5f);
+                    ImGui::SetCursorPosY(cursorPos.y + (windowSize.y - imageSize.y) * 0.5f);
+                    ImGui::Image(mOAMTexture, imageSize);
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
+            }
+        }
+        ImGui::End();
+        ImGui::PopStyleVar(1);
     }
 }

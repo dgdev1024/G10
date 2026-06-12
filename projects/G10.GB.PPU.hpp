@@ -32,6 +32,13 @@ namespace G10::GB
         kFIFOCapacity           = 16;
 
     constexpr std::uint32_t
+        kVramTilesPerBank       = 384,
+        kVramBytesPerTile       = 16,
+        kVramTileDataSize       = kVramTilesPerBank * kVramBytesPerTile,
+        kVramRenderBufferSize   = kVramTilesPerBank * 8 * 8,
+        kOamRenderBufferSize    = kObjectCount * 8 * 8;
+
+    constexpr std::uint32_t
         kDotsPerScanline        = 456,
         kScanlinesPerFrame      = 154,
         kDotsPerFrame           = kDotsPerScanline * kScanlinesPerFrame;
@@ -269,6 +276,11 @@ namespace G10::GB
 
         auto IsOamDmaActive () const -> bool;
         auto IsVramDmaActive () const -> bool;
+
+    public: // Methods - Rendering *********************************************
+
+        auto RenderVideoRAM (bool pBank1) -> std::span<std::uint32_t>;
+        auto RenderOAM () -> std::span<std::uint32_t>;
 
     public: // Methods - Accessors *********************************************
 
@@ -538,6 +550,11 @@ namespace G10::GB
         bool            mLyIncrementedEarly { false };
         bool            mVramReadBlocked { false };
         DisplayMode     mSpeedSwitchDM { DisplayMode::HorizontalBlank };
+
+        // Internal State - VRAM/OAM Renders
+        std::array<std::uint32_t, kVramRenderBufferSize> mRenderedVRAM0;
+        std::array<std::uint32_t, kVramRenderBufferSize> mRenderedVRAM1;
+        std::array<std::uint32_t, kOamRenderBufferSize> mRenderedOAM;
 
     };
 }

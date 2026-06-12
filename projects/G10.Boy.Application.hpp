@@ -34,6 +34,11 @@ namespace G10::Boy
         kSampleRate                 = 44100,
         kSampleCount                = 8192,
         kRingCapacity               = kSampleCount * 2;
+    constexpr std::uint32_t
+        kRenderedVRAMTextureWidth   = 16 * 8,
+        kRenderedVRAMTextureHeight  = 24 * 8,
+        kRenderedOAMTextureWidth    = 8 * 8,
+        kRenderedOAMTextureHeight   = 5 * 8;
 }
 
 // Classes *********************************************************************
@@ -105,6 +110,10 @@ namespace G10::Boy
 
         auto UpdateMemoryWindowGUI () -> void;
 
+    private: // Methods - Tiles Window GUI *************************************
+
+        auto UpdateTilesWindowGUI () -> void;
+
     private: // Members ********************************************************
 
         CPU::Program                        mProgram {};
@@ -112,6 +121,9 @@ namespace G10::Boy
         stx::ptr<SDL_Window>                mWindow { nullptr };
         stx::ptr<SDL_Renderer>              mRenderer { nullptr };
         stx::ptr<SDL_Texture>               mTexture { nullptr };
+        stx::ptr<SDL_Texture>               mVRAM0Texture { nullptr };
+        stx::ptr<SDL_Texture>               mVRAM1Texture { nullptr };
+        stx::ptr<SDL_Texture>               mOAMTexture { nullptr };
         stx::ptr<SDL_AudioStream>           mAudioStream { nullptr };
         std::array<float, kRingCapacity>    mAudioRingBuffer {};
         std::atomic_uint32_t                mAudioReadPos { 0 };
@@ -131,14 +143,17 @@ namespace G10::Boy
         bool        mShowEmulationWindow { true };
         bool        mShowRegistersWindow { true };
         bool        mShowMemoryWindow { true };
+        bool        mShowTilesWindow { true };
 
         bool        mHoverEmulationWindow { false };
         bool        mHoverRegistersWindow { false };
         bool        mHoverMemoryWindow { false };
+        bool        mHoverTilesWindow { false };
 
         bool        mFocusEmulationWindow { false };
         bool        mFocusRegistersWindow { false };
         bool        mFocusMemoryWindow { false };
+        bool        mFocusTilesWindow { false };
 
         bool        mFirstFrame { false };
 

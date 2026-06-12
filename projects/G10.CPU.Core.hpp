@@ -129,6 +129,10 @@ namespace G10::CPU
             { return mStackPointer; }
         inline auto GetFlagsRegister () const -> std::uint8_t
             { return mFlagsRegister.mValue; }
+        inline auto GetExceptionPending () const -> Exception
+            { return mExceptionPending; }
+        inline auto GetException () const -> Exception
+            { return mException; }
         inline auto SetProgramCounter (std::uint32_t pValue) -> void
             { mProgramCounter = pValue; }
 
