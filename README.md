@@ -44,9 +44,9 @@ The **Dear ImGui** and **PFD** dependencies are provided in the `vendor/`
 directory. The **Premake5** dependency is provided in the `tools/` folder. You
 will need to provide the **SDL3** dependency.
 
-## Building
+## Building and Installing
 
-To build the projects in this workspace...
+To build and install the projects in this workspace...
 
 - **On Linux**: 
     - Run the `scripts/full-build.sh` script to perform a clean build, which will 
@@ -57,6 +57,10 @@ To build the projects in this workspace...
         `scripts/gen.sh`.
         - Arguments passed into this script will be forwarded into the
             configured build tool (default: `make`).
+    - Run the `scripts/install.sh` to install the release build libraries and
+        binaries to a target destination (default `/usr/local/lib` and `/usr/local/bin`).
+        - *Note*: If installing shared libraries, you may need to run `ldconfig`
+            after installing.
     - Run the `scripts/asm.sh` script to assemble and link G10 assembly code.
         - Pass in a folder containing the G10 assembly source code to build.
     - Run the `scripts/clean.sh` script to clean the build artifacts.
