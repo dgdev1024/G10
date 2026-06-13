@@ -10,6 +10,11 @@
 .section "Standard Library", code
     .include "functions.inc"
 
+.section "Realtime Interrupt", int6
+    realtime_interrupt:
+        stp [rRTCL], l0
+        reti
+
 .section "Main", code
 
     wait_vblank:
@@ -39,6 +44,11 @@
         ld d15, mVRAM + $1800
         ld w13, tilemap_end - tilemap
         call memcpy
+
+        ; Initialize real-time clock interrupt.
+        ld l0, INT_REALTIME
+        stp [rIE0], l0
+        ei
 
         ; Initialize display registers, then turn LCD back on.
         ld l0, 0b11100100

@@ -17,6 +17,7 @@ namespace G10::GB
         mProgram    { std::nullopt },
         mRAM        { *this },
         mTimer      { *this },
+        mRealtime   { *this },
         mSerial     { *this },
         mJoypad     { *this },
         mPPU        { *this },
@@ -36,6 +37,7 @@ namespace G10::GB
         mCore.Reset();
         mRAM.Reset();
         mTimer.Reset();
+        mRealtime.Reset();
         mSerial.Reset();
         mJoypad.Reset();
         mPPU.Reset();
@@ -46,6 +48,7 @@ namespace G10::GB
     {
         return
             mTimer.Clock(pCycle) &&
+            mRealtime.Clock(pCycle) &&
             mSerial.Clock(pCycle) &&
             mPPU.Clock(pCycle) &&
             mAPU.Clock(pCycle);
@@ -117,6 +120,13 @@ namespace G10::GB
             case PortRegister::TIMA:    return mTimer.ReadTIMA(pDataOut);
             case PortRegister::TMA:     return mTimer.ReadTMA(pDataOut);
             case PortRegister::TAC:     return mTimer.ReadTAC(pDataOut);
+            case PortRegister::RTCS:    return mRealtime.ReadRTCS(pDataOut);
+            case PortRegister::RTCM:    return mRealtime.ReadRTCM(pDataOut);
+            case PortRegister::RTCH:    return mRealtime.ReadRTCH(pDataOut);
+            case PortRegister::RTCDL:   return mRealtime.ReadRTCDL(pDataOut);
+            case PortRegister::RTCDH:   return mRealtime.ReadRTCDH(pDataOut);
+            case PortRegister::RTCC:    return mRealtime.ReadRTCC(pDataOut);
+            case PortRegister::RTCL:    return true;
             case PortRegister::SB:      return mSerial.ReadSB(pDataOut);
             case PortRegister::SC:      return mSerial.ReadSC(pDataOut);
             case PortRegister::RP:      return true;
@@ -212,6 +222,13 @@ namespace G10::GB
             case PortRegister::TIMA:    return mTimer.WriteTIMA(pDataIn);
             case PortRegister::TMA:     return mTimer.WriteTMA(pDataIn);
             case PortRegister::TAC:     return mTimer.WriteTAC(pDataIn);
+            case PortRegister::RTCS:    return mRealtime.WriteRTCS(pDataIn);
+            case PortRegister::RTCM:    return mRealtime.WriteRTCM(pDataIn);
+            case PortRegister::RTCH:    return mRealtime.WriteRTCH(pDataIn);
+            case PortRegister::RTCDL:   return mRealtime.WriteRTCDL(pDataIn);
+            case PortRegister::RTCDH:   return mRealtime.WriteRTCDH(pDataIn);
+            case PortRegister::RTCC:    return mRealtime.WriteRTCC(pDataIn);
+            case PortRegister::RTCL:    return mRealtime.WriteRTCL();
             case PortRegister::SB:      return mSerial.WriteSB(pDataIn);
             case PortRegister::SC:      return mSerial.WriteSC(pDataIn);
             case PortRegister::RP:      return true;

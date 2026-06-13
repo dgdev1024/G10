@@ -40,6 +40,7 @@
 .const bINT_TIMER           = 3
 .const bINT_SERIAL          = 4
 .const bINT_JOYPAD          = 5
+.const bINT_REALTIME        = 6
 
 .const INT_EXCEPTION        = (1 << bINT_EXCEPTION)
 .const INT_VBLANK           = (1 << bINT_VBLANK)
@@ -47,6 +48,7 @@
 .const INT_TIMER            = (1 << bINT_TIMER)
 .const INT_SERIAL           = (1 << bINT_SERIAL)
 .const INT_JOYPAD           = (1 << bINT_JOYPAD)
+.const INT_REALTIME         = (1 << bINT_REALTIME)
 
 ; Port Registers - G10 CPU Speed Control ***************************************
 
@@ -161,6 +163,23 @@
 .const TAC_CLOCK_262KHZ     = %00000001
 .const TAC_CLOCK_65KHZ      = %00000010
 .const TAC_CLOCK_16KHZ      = %00000011
+
+; Port Registers - Real-Time Clock *********************************************
+
+.const rRTCS                = $18
+.const rRTCM                = $19
+.const rRTCH                = $1A
+.const rRTCDL               = $1B
+.const rRTCDH               = $1C
+.const rRTCC                = $1D
+.const rRTCL                = $1E
+
+.const bRTCC_LATCH_TO_SYS   = 5
+.const bRTCC_HALT           = 6
+
+.const RTCC_LATCH_TO_SYS    = (1 << bRTCC_LATCH_TO_SYS)
+.const RTCC_LATCH_TO_REGS   = (0 << bRTCC_LATCH_TO_SYS)
+.const RTCC_HALT            = (1 << bRTCC_HALT)
 
 ; Port Registers - APU Pulse Channel 1 *****************************************
 
@@ -648,3 +667,4 @@
 .const INT_HANDLER_STAT         = $1100
 .const INT_HANDLER_SERIAL       = $1180
 .const INT_HANDLER_JOYPAD       = $1200
+.const INT_HANDLER_REALTIME     = $1280

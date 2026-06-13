@@ -10,6 +10,7 @@
 
 #include <G10.GB.RAM.hpp>
 #include <G10.GB.Timer.hpp>
+#include <G10.GB.Realtime.hpp>
 #include <G10.GB.Serial.hpp>
 #include <G10.GB.Joypad.hpp>
 #include <G10.GB.PPU.hpp>
@@ -60,6 +61,10 @@ namespace G10::GB
             { return mTimer; }
         inline auto GetTimer () const -> const Timer&
             { return mTimer; }
+        inline auto GetRealtime () -> Realtime&
+            { return mRealtime; }
+        inline auto GetRealtime () const -> const Realtime&
+            { return mRealtime; }
         inline auto GetSerial () -> Serial&
             { return mSerial; }
         inline auto GetSerial () const -> const Serial&
@@ -89,6 +94,7 @@ namespace G10::GB
         stx::optional_ref<const CPU::Program> mProgram { std::nullopt };
         RAM mRAM;
         Timer mTimer;
+        Realtime mRealtime;
         Serial mSerial;
         Joypad mJoypad;
         PPU mPPU;

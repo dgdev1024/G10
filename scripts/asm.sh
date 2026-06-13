@@ -23,7 +23,7 @@ ASM_OUTPUT_FOLDER="./build/$1"
 mkdir -p "$ASM_OUTPUT_FOLDER"
 for ASM_FILE in $ASM_FILES; do
     ASM_OUTPUT_FILE="$ASM_OUTPUT_FOLDER/$(basename "${ASM_FILE%.asm}.o")"
-    "$ASM_BINARY" -i "$ASM_FILE" -o "$ASM_OUTPUT_FILE"
+    "$ASM_BINARY" -i "$ASM_FILE" -o "$ASM_OUTPUT_FILE" $@
 done
 
 # Link all object files

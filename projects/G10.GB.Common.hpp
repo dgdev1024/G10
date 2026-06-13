@@ -49,7 +49,8 @@ namespace G10::GB
         DisplayStatus                   = 2,
         Timer                           = 3,
         Serial                          = 4,
-        Joypad                          = 5
+        Joypad                          = 5,
+        Realtime                        = 6
     };
 
     enum class PortRegister : std::uint32_t
@@ -71,6 +72,14 @@ namespace G10::GB
         TIMA                            = 0xFFFFFF11,
         TMA                             = 0xFFFFFF12,
         TAC                             = 0xFFFFFF13,
+        // - Real-Time Clock
+        RTCS                            = 0xFFFFFF18,
+        RTCM                            = 0xFFFFFF19,
+        RTCH                            = 0xFFFFFF1A,
+        RTCDL                           = 0xFFFFFF1B,
+        RTCDH                           = 0xFFFFFF1C,
+        RTCC                            = 0xFFFFFF1D,
+        RTCL                            = 0xFFFFFF1E,
 
         // Communications Port Registers
         // - Serial
