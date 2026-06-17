@@ -456,7 +456,9 @@ namespace G10::ASM
 
         auto node = std::make_shared<LabelStatementNode>();
         
-        node->mLocation = pLocation;node->mLabelExpr = *expr;
+        node->mLocation = pLocation;
+        node->mLabelExpr = *expr;
+
         mOutput.mNodes.push_back(node);
         return true;
     }

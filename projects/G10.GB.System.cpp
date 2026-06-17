@@ -42,6 +42,11 @@ namespace G10::GB
         mJoypad.Reset();
         mPPU.Reset();
         mAPU.Reset();
+
+        if (mProgram.has_value())
+        {
+            mCore.SetProgramCounter(mProgram->GetEntryPoint());
+        }
     }
 
     auto System::Clock (const std::uint64_t& pCycle) -> bool

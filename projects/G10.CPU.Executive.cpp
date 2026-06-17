@@ -70,6 +70,13 @@ namespace G10::CPU
         if (pCore.mExceptionPending != Exception::None)
         {
             bool doubleFaultCondition = (pCore.mException != Exception::None);
+            if (doubleFaultCondition == true)
+            {
+                debug("Double Fault Condition: "
+                    "Acknowledging exception {} while handling exception {}!",
+                    stx::under(pCore.mExceptionPending),
+                    stx::under(pCore.mException));
+            }
 
             pCore.mException = pCore.mExceptionPending;
             pCore.mExceptionPending = Exception::None;
@@ -95,6 +102,11 @@ namespace G10::CPU
                 pCore.WriteProgramCounter(kMemInterruptStartAddr);
             if (good == false)
             {
+                debug("Double Fault Condition: "
+                    "Exception {} raised while jumping to exception handler!",
+                    stx::under(pCore.mExceptionPending)
+                );
+
                 pCore.mDoubleFaultFlag = true;
                 pCore.mStopFlag = true;
                 pCore.mJustStopped = true;
@@ -128,6 +140,12 @@ namespace G10::CPU
                 pCore.WriteProgramCounter(kMemInterruptStartAddr + (i * 0x80));
             if (good == false)
             {
+                debug("Double Fault Condition: "
+                    "Exception {} raised while jumping to interrupt vector {}!",
+                    stx::under(pCore.mExceptionPending),
+                    i
+                );
+
                 pCore.mDoubleFaultFlag = true;
                 pCore.mStopFlag = true;
                 pCore.mJustStopped = true;

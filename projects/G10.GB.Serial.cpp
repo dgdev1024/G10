@@ -39,10 +39,11 @@ namespace G10::GB
 
         // Internal State
         mDotCounter = 0;
-        mTransferByte = 0;
         mBitsTransferred = 0;
+        mPeerByte = 0xFF;
         mTransferActive = false;
-        mIsFirstTransfer = (isCGB == false);
+        mWaitingForPeer = false;
+        mPeerByteReady = false;
     }
 
     auto Serial::Clock (const std::uint64_t& pCycle) -> bool
@@ -51,68 +52,39 @@ namespace G10::GB
         if ((pCycle & 1) != 1)
             { return true; }
 
-        // Only tick if a transfer is active with the internal clock.
-        // - If not, then continue if a transfer was just requested.
         if (mTransferActive == false)
-        {
-            if (mControl.mTransferEnable == true &&
-                mControl.mInternalClock == true)
-            {
-                mTransferActive = true;
-                mBitsTransferred = 0;
-                mDotCounter = 0;
-                mTransferByte = mByte;
-                mIsFirstTransfer = false;
-            }
-            else
-                { return true; }
-        }
-
-        // Determine the number of dots per bit.
-        std::uint16_t dotsPerBit = 512;
-        if (mSystem.IsCGB() == true)
-        {
-            if (mSystem.GetCPU().IsHighSpeed() == true)
-                { dotsPerBit = (mControl.mHighSpeed == true) ? 16 : 32; }
-            else
-                { dotsPerBit = (mControl.mHighSpeed == true) ? 256 : 512; }
-        }
-
-        // Advance the dot counter.
-        if (++mDotCounter >= dotsPerBit)
-        {
-            mDotCounter = 0;
-
-            // Grab the next bit from the external source.
-            // - If there is no source, then assume a default value of `1`.
-            std::uint8_t bit = 1;
-            if (mProgressDelegate != nullptr)
-            {
-                bool good = mProgressDelegate(mSystem, ((mByte >> 7) & 0b1), bit);
-                if (good == false)
-                {
-                    mTransferActive = false;
-                    mControl.mTransferEnable = false;
-                    if (mFinishCallback != nullptr)
-                        { mFinishCallback(mSystem, mTransferByte, mByte); }
-
-                    return true;
-                }
-            }
-
-            // Shift `SB` left by one bit, pulling in the received bit.
-            mByte = (mByte << 1) | (bit & 0b1);
-            if (++mBitsTransferred >= 8)
-            {
-                mTransferActive = false;
-                mControl.mTransferEnable = false;
-                mSystem.GetCPU().RequestInterrupt(stx::under(Interrupt::Serial));
-                if (mFinishCallback != nullptr)
-                    { mFinishCallback(mSystem, mTransferByte, mByte); }
-            }
-        }
+            { TryStartTransfer(); }
+        else
+            { ClockTransfer(); }
 
         return true;
+    }
+
+    auto Serial::ReceiveByte (const std::uint8_t pByte) -> void
+    {
+        if (mControl.mInternalClock == true)
+        {
+            // Host receives client's reply byte.
+            mPeerByte = pByte;
+            mWaitingForPeer = false;
+            mPeerByteReady = true;
+        }
+        else
+        {
+            // Client receives host's clock / byte.
+            // Send our `SB` back to acknowledge the host.
+            if (mTransmitCallback != nullptr)
+                { mTransmitCallback(mSystem, mByte); }    
+            mPeerByte = pByte;
+
+            // If we've already enabled the transfer on our end, proceed.
+            // If not, queue the byte so we catch it when we do enable it to 
+            // prevent jitter desync.
+            if (mTransferActive == true && mWaitingForPeer == true)
+                { mWaitingForPeer = false; }
+            else
+                { mPeerByteReady = true; }
+        }
     }
 }
 
@@ -120,10 +92,8 @@ namespace G10::GB
 
 namespace G10::GB
 {
-    auto Serial::SetProgressDelegate (const SerialProgressDelegate& pDelegate) -> void
-        { mProgressDelegate = pDelegate; }
-    auto Serial::SetFinishCallback (const SerialFinishCallback& pCallback) -> void
-        { mFinishCallback = pCallback; }
+    auto Serial::SetTransmitCallback (const SerialTransmitCallback& pCallback) -> void
+        { mTransmitCallback = pCallback; }
 }
 
 // Public Methods - Hardware Registers *****************************************
@@ -172,5 +142,96 @@ namespace G10::GB
             { mControl.mValue = (pDataIn & 0b10000001) | 0b01111110; }
 
         return true;
+    }
+}
+
+// Private Methods *************************************************************
+
+namespace G10::GB
+{
+    auto Serial::TryStartTransfer () -> void
+    {
+        // Early out if transfer is not currently enabled.
+        if (mControl.mTransferEnable == false)
+            { return; }
+
+        // Prepare to start transfer.
+        mBitsTransferred = 0;
+        mDotCounter = 0;
+        mTimeout = 0;
+        mTransferActive = true;
+        mWaitingForPeer = true;
+
+        if (mControl.mInternalClock == true)
+        {
+            // Host: Transmit byte and wait for reply.
+            mPeerByteReady = false;
+            if (mTransmitCallback != nullptr)
+                { mTransmitCallback(mSystem, mByte); }
+            else
+                { ReceiveByte(0xFF); /* Link cable disconnected. */ }
+        }
+        else
+        {
+            // Client: Wait for host to clock us.
+            if (mPeerByteReady == true)
+            {
+                mWaitingForPeer = false;
+                mPeerByteReady = false;
+            }
+        }
+    }
+    
+    auto Serial::ClockTransfer () -> void
+    {
+        if (mWaitingForPeer == true)
+        {
+            if (++mTimeout >= 0x3FFFFF)
+            {
+                AbortTransfer();
+            }
+
+            return;
+        }
+
+        if (++mDotCounter < GetDotsPerBit())
+            { return; }
+        else
+            { mDotCounter = 0; }
+
+        const std::uint8_t recvBit = static_cast<std::uint8_t>(
+            (mPeerByte >> (7 - mBitsTransferred)) & 0b1);
+        mByte = static_cast<std::uint8_t>((mByte << 1) | recvBit);
+
+        if (++mBitsTransferred >= 8)
+        {
+            mTransferActive = false;
+            mControl.mTransferEnable = false;
+            mSystem.GetCPU().RequestInterrupt(stx::under(Interrupt::Serial));
+        }
+    }
+    
+    auto Serial::AbortTransfer () -> void
+    {
+        mTimeout = 0;
+        mTransferActive = false;
+        mWaitingForPeer = false;
+        mPeerByteReady = false;
+        mBitsTransferred = 0;
+        mDotCounter = 0;
+        mPeerByte = 0xFF;
+        mControl.mTransferEnable = false;
+    }
+    
+    auto Serial::GetDotsPerBit () const -> std::uint16_t
+    {
+        if (mSystem.IsCGB() == true)
+        {
+            if (mSystem.GetCPU().IsHighSpeed() == true)
+                { return (mControl.mHighSpeed == true) ? 16 : 32; }
+            else
+                { return (mControl.mHighSpeed == true) ? 256 : 512; }
+        }
+        return 512;
     }
 }

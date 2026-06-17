@@ -525,7 +525,7 @@ namespace G10::CPU
         std::uint32_t mem = 0;
         return
             pCore.ReadRegisterDW(pInst.mParamY, mem) &&
-            pCore.WriteStackPointer(mem);
+            pCore.PushStackDW(mem);
     }
 
     auto Executive::ExecuteMV_DX_DY (Core& pCore, const Instruction& pInst) -> bool

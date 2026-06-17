@@ -128,8 +128,7 @@ namespace G10::ASM
             ctx.mHeader.mTargetAddress = CPU::kMemInterruptStartAddr +
                 (ctx.mHeader.mInterruptNumber * 0x80);
         }
-
-        if (pTargetAddress == stx::npos32)
+        else if (pTargetAddress == stx::npos32)
         {
             auto last = GetLastSectionOfType(pType);
             if (last.has_value() == true)

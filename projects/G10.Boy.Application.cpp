@@ -180,24 +180,23 @@ namespace G10::Boy
             throw stx::runtime_error { 
                 "Could not initialize SDL: '{}'", SDL_GetError() };
         }
+        else if (NET_Init() == false)
+        {
+            throw stx::runtime_error { 
+                "Could not initialize SDL_net: '{}'", SDL_GetError() };
+        }
 
         // Application Window
         mWindow = SDL_CreateWindow(
             kApplicationWindowTitle.data(),
             kApplicationWindowWidth,
             kApplicationWindowHeight,
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_MAXIMIZED
+            SDL_WINDOW_RESIZABLE
         );
         if (mWindow == nullptr)
         {
             throw stx::runtime_error { 
                 "Could not create window: '{}'", SDL_GetError() };
-        }
-        else
-        {
-            SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, 
-                SDL_WINDOWPOS_CENTERED);
-            SDL_ShowWindow(mWindow);
         }
 
         // Application Renderer
@@ -309,6 +308,29 @@ namespace G10::Boy
         if (mProgramFile.empty() == false)
             { OpenProgram(mProgramFile); }
 
+        auto& serial = mSystem.GetSerial();
+        serial.SetTransmitCallback([this] (const GB::System&, std::uint8_t pByte)
+        {
+            if (mSerialSocket != nullptr)
+            {
+                auto result = NET_WriteToStreamSocket(mSerialSocket, &pByte, 1);
+                if (result == false)
+                {
+                    NET_DestroyStreamSocket(mSerialSocket);
+                    mSerialSocket = nullptr;
+                    mNetworkingIsClient = false;
+
+                    if (mSerialAddress != nullptr)
+                    {
+                        NET_UnrefAddress(mSerialAddress);
+                        mSerialAddress = nullptr;
+                    }
+                }
+            }
+            else
+                { mSystem.GetSerial().ReceiveByte(0xFF); }
+        });
+
         auto& apu = mSystem.GetAPU();
         apu.SetSampleCallback([this] (const GB::System&, float pLeft, float pRight)
         {
@@ -326,6 +348,9 @@ namespace G10::Boy
 
     auto Application::ShutdownSDL () -> void
     {
+        if (mSerialSocket != nullptr)   { NET_DestroyStreamSocket(mSerialSocket); }
+        if (mSerialServer != nullptr)   { NET_DestroyServer(mSerialServer); }
+        if (mSerialAddress != nullptr)  { NET_UnrefAddress(mSerialAddress); }
         if (mAudioStream != nullptr)    { SDL_PauseAudioStreamDevice(mAudioStream); SDL_DestroyAudioStream(mAudioStream); }
         if (mVRAM0Texture != nullptr)   { SDL_DestroyTexture(mVRAM0Texture); }
         if (mVRAM1Texture != nullptr)   { SDL_DestroyTexture(mVRAM1Texture); }
@@ -333,6 +358,8 @@ namespace G10::Boy
         if (mTexture != nullptr)        { SDL_DestroyTexture(mTexture); }
         if (mRenderer != nullptr)       { SDL_DestroyRenderer(mRenderer); }
         if (mWindow != nullptr)         { SDL_DestroyWindow(mWindow); }
+
+        NET_Quit();
         SDL_Quit();
     }
 
@@ -364,6 +391,16 @@ namespace G10::Boy
         {
             if (event.mod & SDL_KMOD_CTRL)
                 { ShowOpenProgramDialog(); }
+        }
+        else if (event.key == SDLK_N)
+        {
+            if (event.mod & SDL_KMOD_ALT)
+                { mShowNetworkingWindow = true; }
+        }
+        else if (event.key == SDLK_R)
+        {
+            if (event.mod & SDL_KMOD_CTRL)
+                { Reset(); }
         }
 
         #if defined(G10_CONFIG_DEBUG)
@@ -468,18 +505,22 @@ namespace G10::Boy
     auto Application::Update () -> void
     {
         if (mTexture != nullptr && 
-            mProgramFilename.empty() == false &&
-            mShowEmulationWindow == true)
+            mProgramFilename.empty() == false)
         {
-            const auto& frameBuffer = mSystem.GetPPU().GetFrameBuffer();
+            UpdateNetwork();
 
-            std::int32_t pitch = 0;
-            std::uint32_t* pixels = nullptr;
-            SDL_LockTexture(mTexture, nullptr, 
-                reinterpret_cast<void**>(&pixels), &pitch);
-            SDL_memcpy(pixels, frameBuffer.data(), 
-                frameBuffer.size() * sizeof(std::uint32_t));
-            SDL_UnlockTexture(mTexture);
+            if (mShowEmulationWindow == true)
+            {
+                const auto& frameBuffer = mSystem.GetPPU().GetFrameBuffer();
+    
+                std::int32_t pitch = 0;
+                std::uint32_t* pixels = nullptr;
+                SDL_LockTexture(mTexture, nullptr, 
+                    reinterpret_cast<void**>(&pixels), &pitch);
+                SDL_memcpy(pixels, frameBuffer.data(), 
+                    frameBuffer.size() * sizeof(std::uint32_t));
+                SDL_UnlockTexture(mTexture);
+            }
         }
     }
 
@@ -502,6 +543,8 @@ namespace G10::Boy
             { UpdateMemoryWindowGUI(); }
         if (mShowTilesWindow == true && mProgramFilename.empty() == false)
             { UpdateTilesWindowGUI(); }
+        if (mShowNetworkingWindow == true)
+            { UpdateNetworkingWindowGUI(); }
     }
 
     auto Application::Render () -> void
@@ -514,10 +557,69 @@ namespace G10::Boy
     }
 }
 
+// Private Methods - Networking ************************************************
+
+namespace G10::Boy
+{
+    auto Application::UpdateNetwork () -> void
+    {
+        // Check for any clients connecting to this host. Limit one client per
+        // host.
+        if (mSerialServer != nullptr)
+        {
+            stx::ptr<NET_StreamSocket> clientStream { nullptr };
+            if (NET_AcceptClient(mSerialServer, &clientStream) &&
+                clientStream != nullptr)
+            {
+                // If there is already a client connected, then refuse this
+                // new connection.
+                if (mSerialSocket != nullptr)
+                    { NET_DestroyStreamSocket(clientStream); }
+                else
+                    { mSerialSocket = clientStream; }
+            }
+        }
+
+        // Check for incoming packets.
+        if (mSerialSocket != nullptr)
+        {
+            std::uint8_t incomingByte { 0xFF };
+            std::int32_t bytesRead = 0;
+            while (
+                (bytesRead = NET_ReadFromStreamSocket(
+                    mSerialSocket,
+                    &incomingByte, 1
+                )) > 0
+            )
+            {
+                mSystem.GetSerial().ReceiveByte(incomingByte);
+            }
+
+            if (bytesRead < 0)
+            {
+                NET_DestroyStreamSocket(mSerialSocket);
+                mSerialSocket = nullptr;
+                mNetworkingIsClient = false;
+
+                if (mSerialAddress != nullptr)
+                {
+                    NET_UnrefAddress(mSerialAddress);
+                    mSerialAddress = nullptr;
+                }
+            }
+        }
+    }
+}
+
 // Private Methods - General ***************************************************
 
 namespace G10::Boy
 {
+    auto Application::Reset () -> void
+    {
+        mSystem.Reset();
+    }
+
     auto Application::OpenProgram (const fs::path& pPath) -> bool
     {
         CPU::Program program;
@@ -657,6 +759,7 @@ namespace G10::Boy
         {
             UpdateFileMenuGUI();
             UpdateViewMenuGUI();
+            UpdateToolsMenuGUI();
             ImGui::EndMainMenuBar();
         }
     }
@@ -668,10 +771,12 @@ namespace G10::Boy
             if (ImGui::MenuItem("Open", "Ctrl+O"))
                 { ShowOpenProgramDialog(); }
             ImGui::Separator();
+            if (ImGui::MenuItem("Reset", "Ctrl+R"))
+                { Reset(); }
+            ImGui::Separator();
             if (ImGui::MenuItem("Dump Video RAM...", nullptr, nullptr, 
                 (mProgramFilename.empty() == false)))
                 { ShowDumpVideoRAMDialog(); }
-
             ImGui::Separator();
             if (ImGui::MenuItem("Quit", "Ctrl+Q"))
                 { HandleQuitEvent(); }
@@ -694,6 +799,17 @@ namespace G10::Boy
                 (mProgramFilename.empty() == false));
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo Window", nullptr, &mShowDemoWindow);
+
+            ImGui::EndMenu();
+        }
+    }
+
+    auto Application::UpdateToolsMenuGUI () -> void
+    {
+        if (ImGui::BeginMenu("Tools"))
+        {
+            ImGui::MenuItem("Networking", "Alt+N", &mShowNetworkingWindow, 
+                (mProgramFilename.empty() == false));
 
             ImGui::EndMenu();
         }
@@ -948,5 +1064,131 @@ namespace G10::Boy
         }
         ImGui::End();
         ImGui::PopStyleVar(1);
+    }
+}
+
+// Private Methods - Networking Window GUI *************************************
+
+namespace G10::Boy
+{
+    auto Application::UpdateNetworkingWindowGUI () -> void
+    {
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoResize;
+
+        ImGui::SetNextWindowSize(ImVec2(400, 300));
+        ImGui::Begin("Networking", &mShowNetworkingWindow, flags);
+        {
+            mHoverNetworkingWindow = ImGui::IsWindowHovered();
+            mFocusNetworkingWindow = ImGui::IsWindowFocused();
+
+            if (mNetworkingIsClient == false)
+            {
+                ImGui::SeparatorText("Host Local Server");
+                if (mSerialServer == nullptr)
+                {
+                    ImGui::InputScalarN("Server Port", ImGuiDataType_U16, 
+                        &mNetworkingServerPort, 1, nullptr, nullptr, "%u");
+                    if (ImGui::Button("Start Server"))
+                    {
+                        mSerialServer = NET_CreateServer(nullptr, mNetworkingServerPort, 0);
+                        if (mSerialServer == nullptr)
+                        {
+                            pfd::message(
+                                "Error Starting Server",
+                                std::format(
+                                    "Failed to start server on port #{}\n"
+                                    " - {}",
+                                    mNetworkingServerPort,
+                                    SDL_GetError()
+                                ),
+                                pfd::choice::ok,
+                                pfd::icon::error
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    ImGui::Text("Server running on port #%u", mNetworkingServerPort);
+                }
+            }
+
+            if (mSerialServer == nullptr)
+            {
+                ImGui::SeparatorText("Client");
+                if (mSerialSocket == nullptr)
+                {
+                    ImGui::InputText("IP Address", mNetworkingIP.data(), mNetworkingIP.size());
+                    ImGui::InputScalarN("Client Port", ImGuiDataType_U16, 
+                        &mNetworkingClientPort, 1, nullptr, nullptr, "%u");
+                    if (ImGui::Button("Connect"))
+                    {
+                        mSerialAddress = NET_ResolveHostname(mNetworkingIP.c_str());
+                        auto result = NET_WaitUntilResolved(mSerialAddress, 10);
+                        if (result == NET_SUCCESS)
+                        {
+                            mSerialSocket = NET_CreateClient(mSerialAddress, 
+                                mNetworkingClientPort, 0);
+                            auto result = NET_WaitUntilConnected(mSerialSocket, 10);
+                            if (result == NET_FAILURE)
+                            {
+                                pfd::message(
+                                    "Error Connecting to Server",
+                                    std::format(
+                                        "Failed to connect to server at {}:{}\n"
+                                        " - {}",
+                                        mNetworkingIP,
+                                        mNetworkingClientPort,
+                                        SDL_GetError()
+                                    ),
+                                    pfd::choice::ok,
+                                    pfd::icon::error
+                                );
+                                NET_DestroyStreamSocket(mSerialSocket);
+                                NET_UnrefAddress(mSerialAddress);
+                                mSerialSocket = nullptr;
+                                mSerialAddress = nullptr;
+                            }
+                            else if (result == NET_SUCCESS)
+                            {
+                                mNetworkingIsClient = true;
+                            }
+                        }
+                        else
+                        {
+                            pfd::message(
+                                "Error Resolving Hostname",
+                                std::format(
+                                    "Failed to resolve hostname '{}'\n"
+                                    " - {}",
+                                    mNetworkingIP,
+                                    SDL_GetError()
+                                ),
+                                pfd::choice::ok,
+                                pfd::icon::error
+                            );
+                            NET_UnrefAddress(mSerialAddress);
+                            mSerialAddress = nullptr;
+                        }
+                    }
+                }
+                else
+                {
+                    ImGui::Text("Connected to %s:%u", mNetworkingIP.c_str(), mNetworkingClientPort);
+                }
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Disconnect"))
+            {
+                if (mSerialSocket != nullptr)   { NET_DestroyStreamSocket(mSerialSocket); mSerialSocket = nullptr; }
+                if (mSerialServer != nullptr)   { NET_DestroyServer(mSerialServer); mSerialServer = nullptr; }
+                if (mSerialAddress != nullptr)  { NET_UnrefAddress(mSerialAddress); mSerialAddress = nullptr; }
+                mNetworkingIsClient = false;
+            }
+        }
+        ImGui::End();
     }
 }

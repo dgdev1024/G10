@@ -742,9 +742,9 @@ namespace G10::ASM
     auto Linker::IdentifyEntryPoint () -> bool
     {
         bool foundEntryPoint = false;
-        const std::array<std::string, 3> candidates = { 
-            "main", 
-            "start", 
+        const std::array<std::string, 5> candidates = { 
+            "main", "Main",
+            "start", "Start",
             "_start" 
         };
 

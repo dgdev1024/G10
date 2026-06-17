@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <SDL3/SDL.h>
+#include <SDL3_net/SDL_net.h>
 #include <G10.GB.System.hpp>
 
 // Types ***********************************************************************
@@ -39,6 +40,11 @@ namespace G10::Boy
         kRenderedVRAMTextureHeight  = 24 * 8,
         kRenderedOAMTextureWidth    = 8 * 8,
         kRenderedOAMTextureHeight   = 5 * 8;
+        
+    enum class SerialConnection
+    {
+        None
+    };
 }
 
 // Classes *********************************************************************
@@ -81,8 +87,13 @@ namespace G10::Boy
         auto UpdateGUI () -> void;
         auto Render () -> void;
 
+    private: // Methods - Networking *******************************************
+
+        auto UpdateNetwork () -> void;
+
     private: // Methods - General **********************************************
 
+        auto Reset () -> void;
         auto OpenProgram (const fs::path& pPath) -> bool;
         auto DumpVideoRAM (const fs::path& pPath) -> bool;
         auto CloseProgram () -> void;
@@ -97,6 +108,7 @@ namespace G10::Boy
         auto UpdateMainMenuBarGUI () -> void;
         auto UpdateFileMenuGUI () -> void;
         auto UpdateViewMenuGUI () -> void;
+        auto UpdateToolsMenuGUI () -> void;
 
     private: // Methods - Emulation Window GUI *********************************
 
@@ -114,6 +126,10 @@ namespace G10::Boy
 
         auto UpdateTilesWindowGUI () -> void;
 
+    private: // Methods - Networking Window GUI ********************************
+
+        auto UpdateNetworkingWindowGUI () -> void;
+
     private: // Members ********************************************************
 
         CPU::Program                        mProgram {};
@@ -128,6 +144,9 @@ namespace G10::Boy
         std::array<float, kRingCapacity>    mAudioRingBuffer {};
         std::atomic_uint32_t                mAudioReadPos { 0 };
         std::atomic_uint32_t                mAudioWritePos { 0 };
+        stx::ptr<NET_Server>                mSerialServer { nullptr };
+        stx::ptr<NET_StreamSocket>          mSerialSocket { nullptr };
+        stx::ptr<NET_Address>               mSerialAddress { nullptr };
 
         bool                                mRunning { true };
         std::string                         mProgramFilename {};
@@ -144,21 +163,29 @@ namespace G10::Boy
         bool        mShowRegistersWindow { true };
         bool        mShowMemoryWindow { true };
         bool        mShowTilesWindow { true };
+        bool        mShowNetworkingWindow { true };
 
         bool        mHoverEmulationWindow { false };
         bool        mHoverRegistersWindow { false };
         bool        mHoverMemoryWindow { false };
         bool        mHoverTilesWindow { false };
+        bool        mHoverNetworkingWindow { false };
 
         bool        mFocusEmulationWindow { false };
         bool        mFocusRegistersWindow { false };
         bool        mFocusMemoryWindow { false };
         bool        mFocusTilesWindow { false };
+        bool        mFocusNetworkingWindow { false };
 
         bool        mFirstFrame { false };
 
         std::uint32_t   mMemoryViewingAddress { 0x00000000 };
         bool            mMemoryFollowPC { true };
+
+        std::string     mNetworkingIP { "127.0.0.1" };
+        std::uint16_t   mNetworkingServerPort { 8765 };
+        std::uint16_t   mNetworkingClientPort { 8765 };
+        bool            mNetworkingIsClient { false };
 
     };
 }

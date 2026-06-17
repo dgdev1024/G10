@@ -146,9 +146,21 @@ namespace G10::CPU
         if (pException == Exception::None)
             { return true; }
 
+        debug("Exception: "
+            "{} at ${:08X}", stx::under(pException), mProgramCounter);
         if (mExceptionPending != Exception::None ||
             pException == Exception::DoubleFault)
         {
+            if (pException == Exception::DoubleFault)
+            {
+                debug("Double Fault Condition: `DOUBLE_FAULT` exception raised!");
+            }
+            else
+            {
+                debug("Double Fault Condition: Exception raised while exception {} pending!",
+                    stx::under(mExceptionPending));
+            }
+
             mDoubleFaultFlag = true;
             mStopFlag = true;
             mJustStopped = true;

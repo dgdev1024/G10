@@ -99,4 +99,4 @@ project "G10.Boy"
         "../vendor/imgui/*.cpp",
         "../vendor/pfd/pfd.hpp",
     }
-    links { "G10.CPU", "G10.GB", "SDL3" }
+    links { "G10.CPU", "G10.GB", "SDL3", "SDL3_net" }

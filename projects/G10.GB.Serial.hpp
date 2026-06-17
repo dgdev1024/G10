@@ -16,13 +16,7 @@ namespace G10::GB
 {
     class System;
 
-    using SerialProgressDelegate = std::function<bool (System&, std::uint8_t, std::uint8_t&)>;
-    using SerialFinishCallback = std::function<void (const System&, std::uint8_t, std::uint8_t)>;
-
-    // using SerialProgressDelegate = std::function<bool(System&,
-    //     std::uint8_t /* pSentBit */, std::uint8_t& /* pReceivedBit */)>;
-    // using SerialFinishCallback = std::function<void(const System&,
-    //     std::uint8_t /* pSentByte */, std::uint8_t /* pReceivedByte */)>;    
+    using SerialTransmitCallback = std::function<void (const System&, std::uint8_t)>;
 }
 
 // Constants & Enumeartions ****************************************************
@@ -63,11 +57,11 @@ namespace G10::GB
 
         auto Reset () -> void;
         auto Clock (const std::uint64_t& pCycle) -> bool;
+        auto ReceiveByte (const std::uint8_t pByte) -> void;
 
     public: // Methods - Callbacks *********************************************
 
-        auto SetProgressDelegate (const SerialProgressDelegate& pDelegate) -> void;
-        auto SetFinishCallback (const SerialFinishCallback& pCallback) -> void;
+        auto SetTransmitCallback (const SerialTransmitCallback& pCallback) -> void;
 
     public: // Methods - Port Registers ****************************************
 
@@ -82,24 +76,32 @@ namespace G10::GB
         inline auto GetNextBit () const -> std::uint8_t
             { return (mByte >> 7) & 0b1; }
 
+    private: // Methods ********************************************************
+
+        auto TryStartTransfer () -> void;
+        auto ClockTransfer () -> void;
+        auto AbortTransfer () -> void;
+        auto GetDotsPerBit () const -> std::uint16_t;
+
     private: // Members ********************************************************
 
         System& mSystem;
 
         // Callbacks
-        SerialProgressDelegate mProgressDelegate;
-        SerialFinishCallback mFinishCallback;
+        SerialTransmitCallback mTransmitCallback;
 
         // Port Registers
         std::uint8_t            mByte { 0x00 };
         SerialControlRegister   mControl { .mValue = 0x00 };
 
         // Internal State
-        std::uint16_t   mDotCounter { 0 };
-        std::uint8_t    mTransferByte { 0 };
-        std::uint8_t    mBitsTransferred { 0 };
-        bool            mTransferActive { false };
-        bool            mIsFirstTransfer { false };
+        std::uint32_t           mTimeout { 0 };
+        std::uint16_t           mDotCounter { 0 };
+        std::uint8_t            mBitsTransferred { 0 };
+        std::uint8_t            mPeerByte { 0xFF };
+        bool                    mTransferActive { false };
+        bool                    mWaitingForPeer { false };
+        bool                    mPeerByteReady { false };
 
     };
 }
