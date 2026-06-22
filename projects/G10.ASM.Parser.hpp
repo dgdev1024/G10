@@ -34,6 +34,16 @@ namespace G10::ASM
 
     private: // Methods - Dispatch - Directives ********************************
 
+        auto DispatchCharmapDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
+        auto DispatchNewCharmapDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
+        auto DispatchSetCharmapDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
+        auto DispatchPushCharmapDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
+        auto DispatchPopCharmapDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
         auto DispatchByteDirective (const SourceLocation& pLocation, 
             TokenCursor& pCursor) -> bool;
         auto DispatchWordDirective (const SourceLocation& pLocation, 

@@ -48,6 +48,13 @@ namespace G10::ASM
         SourceLocation      mLocation {};
     };
 
+    struct PreprocessorSnippet final
+    {
+        std::string                 mName {};
+        std::vector<Token>          mBody {};
+        SourceLocation              mLocation {};
+    };
+
     struct PreprocessorMacro final
     {
         std::string                 mName {};
@@ -137,8 +144,9 @@ namespace G10::ASM
         auto DispatchContinue (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
         auto DispatchBreak (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
 
-    private: // Methods - Dispatch - Macros ************************************
+    private: // Methods - Dispatch - Snippets & Macros *************************
 
+        auto DispatchSnippet (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
         auto DispatchMacro (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
         auto DispatchMacroCall (TokenCursor& pCursor, const SourceLocation& pLocation,
             PreprocessorMacro& pMacro) -> bool;
@@ -226,6 +234,7 @@ namespace G10::ASM
 
         std::vector<fs::path> mIncludeDirs {};
         std::unordered_map<std::string, PreprocessorSymbol> mSymbols {};
+        std::unordered_map<std::string, PreprocessorSnippet> mSnippets {};
         std::unordered_map<std::string, PreprocessorMacro> mMacros {};
         std::unordered_set<std::string> mOnceFiles {};
         std::vector<PreprocessorMacroCall> mMacroCallStack {};

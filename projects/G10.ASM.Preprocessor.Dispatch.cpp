@@ -46,6 +46,7 @@ namespace G10::ASM
                 case PreprocessorDirective::ASSERT:     return DispatchAssert(pCursor, pLocation);
                 case PreprocessorDirective::LET:        return DispatchLet(pCursor, pLocation);
                 case PreprocessorDirective::CONST:      return DispatchConst(pCursor, pLocation);
+                case PreprocessorDirective::SNIPPET:    return DispatchSnippet(pCursor, pLocation);
                 case PreprocessorDirective::IF:         return DispatchIf(pCursor, pLocation);
                 case PreprocessorDirective::REPEAT:     return DispatchRepeat(pCursor, pLocation);
                 case PreprocessorDirective::WHILE:      return DispatchWhile(pCursor, pLocation);
@@ -997,6 +998,36 @@ namespace G10::ASM
 
 namespace G10::ASM
 {
+    auto Preprocessor::DispatchSnippet (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // 1. Collect, then interpolate the snippet name.
+        auto nameToken = pCursor.ExpectNextToken(TokenType::Identifier);
+        if (nameToken.has_value() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected identifier after '.DEF' directive.");
+            return false;
+        }
+        auto name = InterpolateIdentifier(pLocation, nameToken->Stringify().value_or(""));
+        if (name.has_value() == false)
+            { return false; }
+
+        // 2. Collect the snippet's body. This will run until the end of the line
+        //    or file.
+        auto bodySlice = pCursor.CollectLine();
+
+        // 3. Create the snippet structure.
+        PreprocessorSnippet snippet {};
+        snippet.mName = *name;
+        snippet.mLocation = pLocation;
+        snippet.mBody.assign_range(bodySlice);
+
+        mSnippets[*name] = std::move(snippet);
+
+        return true;
+    }
+
     auto Preprocessor::DispatchMacro (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {

@@ -17,7 +17,17 @@ namespace G10::ASM
         if (pNode == nullptr)
             { return false; }
 
-        if (const auto ptr = stx::to<ByteDirectiveNode>(pNode))
+        if (const auto ptr = stx::to<CharmapDirectiveNode>(pNode))
+            { return DispatchCharmapDirective(*ptr); }
+        else if (const auto ptr = stx::to<NewCharmapDirectiveNode>(pNode))
+            { return DispatchNewCharmapDirective(*ptr); }
+        else if (const auto ptr = stx::to<SetCharmapDirectiveNode>(pNode))
+            { return DispatchSetCharmapDirective(*ptr); }
+        else if (const auto ptr = stx::to<PushCharmapDirectiveNode>(pNode))
+            { return DispatchPushCharmapDirective(*ptr); }
+        else if (const auto ptr = stx::to<PopCharmapDirectiveNode>(pNode))
+            { return DispatchPopCharmapDirective(*ptr); }
+        else if (const auto ptr = stx::to<ByteDirectiveNode>(pNode))
             { return DispatchByteDirective(*ptr); }
         else if (const auto ptr = stx::to<WordDirectiveNode>(pNode))
             { return DispatchWordDirective(*ptr); }
@@ -46,6 +56,75 @@ namespace G10::ASM
 
         mDiag.ReportError(pNode->mLocation, "Un-implemented syntax node type.");
         return false;
+    }
+
+    auto Codegen::DispatchCharmapDirective (const CharmapDirectiveNode& pNode) -> bool
+    {
+        auto& activeCharmap = mCharmaps[mActiveCharmap];
+        activeCharmap[pNode.mString->mValue] = (pNode.mInteger->mValue & 0xFF);
+        return true;
+    }
+
+    auto Codegen::DispatchNewCharmapDirective (const NewCharmapDirectiveNode& pNode) -> bool
+    {
+        const auto& charmapName = pNode.mString->mValue;
+        auto findIt = mCharmaps.find(charmapName);
+        if (findIt == mCharmaps.end())
+            { mCharmaps[charmapName] = {}; }
+
+        mActiveCharmap = charmapName;
+        return true;
+    }
+
+    auto Codegen::DispatchSetCharmapDirective (const SetCharmapDirectiveNode& pNode) -> bool
+    {
+        const auto& charmapName = pNode.mString->mValue;
+        auto findIt = mCharmaps.find(charmapName);
+        if (findIt == mCharmaps.end())
+        {
+            mDiag.ReportWarning(pNode.mLocation, "SetCharmapDirective: Unknown charmap '{}'.", charmapName);
+            mActiveCharmap = "";
+            return true;
+        }
+
+        mActiveCharmap = charmapName;
+        return true;
+    }
+
+    auto Codegen::DispatchPushCharmapDirective (const PushCharmapDirectiveNode& pNode) -> bool
+    {
+        mCharmapStack.push(mActiveCharmap);
+        if (pNode.mString != nullptr)
+        {
+            const auto& charmapName = pNode.mString->mValue;
+            auto findIt = mCharmaps.find(charmapName);
+            if (findIt == mCharmaps.end())
+            {
+                mDiag.ReportWarning(pNode.mLocation, 
+                    "PushCharmapDirective: Unknown charmap '{}'.", charmapName);
+            }
+            else
+            {
+                mActiveCharmap = charmapName;
+            }
+        }
+
+        return true;
+    }
+
+    auto Codegen::DispatchPopCharmapDirective (const PopCharmapDirectiveNode& pNode) -> bool
+    {
+        if (mCharmapStack.empty() == false)
+        {
+            mActiveCharmap = mCharmapStack.top();
+            mCharmapStack.pop();
+        }
+        else
+        {
+            mActiveCharmap = "";
+        }
+
+        return true;
     }
 
     auto Codegen::DispatchByteDirective (const ByteDirectiveNode& pNode) -> bool
@@ -90,7 +169,7 @@ namespace G10::ASM
 
                 if (const auto s = EvaluateStringExpression(operand))
                 {
-                    if (EmitString(*s, true) == false) 
+                    if (EmitString(*s, true, true) == false) 
                         { return false; }
                 }
                 else if (const auto i = EvaluateIntegerExpression(operand))
@@ -287,7 +366,7 @@ namespace G10::ASM
 
             if (const auto s = EvaluateStringExpression(operand))
             {
-                if (EmitString(*s) == false)
+                if (EmitString(*s, true) == false)
                     { return false; }
             }
             else

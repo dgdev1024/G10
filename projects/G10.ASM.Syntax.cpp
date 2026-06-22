@@ -82,6 +82,56 @@ namespace G10::ASM
 
     // Directive Nodes *********************************************************
 
+    auto CharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}CharmapDirective:\n"
+            "{1}"
+            "{2}",
+            std::string(pIndent * 2, ' '),
+            mString ? mString->Stringify(pIndent + 2) : "",
+            mInteger ? mInteger->Stringify(pIndent + 2) : ""
+        );
+    }
+
+    auto NewCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}NewCharmapDirective:\n"
+            "{1}",
+            std::string(pIndent * 2, ' '),
+            mString ? mString->Stringify(pIndent + 2) : ""
+        );
+    }
+
+    auto SetCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}SetCharmapDirective:\n"
+            "{1}",
+            std::string(pIndent * 2, ' '),
+            mString ? mString->Stringify(pIndent + 2) : ""
+        );
+    }
+
+    auto PushCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}PushCharmapDirective:\n"
+            "{1}",
+            std::string(pIndent * 2, ' '),
+            mString ? mString->Stringify(pIndent + 2) : ""
+        );
+    }
+
+    auto PopCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}PopCharmapDirective:\n",
+            std::string(pIndent * 2, ' ')
+        );
+    }
+
     auto ByteDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
     {
         std::string str = std::format(

@@ -34,16 +34,21 @@ namespace G10::ASM
     {
         switch (pKeyword.GetType<AssemblerDirective>())
         {
-            case AssemblerDirective::BYTE:      return DispatchByteDirective(pLocation, pCursor);
-            case AssemblerDirective::WORD:      return DispatchWordDirective(pLocation, pCursor);
-            case AssemblerDirective::DWORD:     return DispatchDoubleWordDirective(pLocation, pCursor);
-            case AssemblerDirective::ASCIZ:     return DispatchStringDirective(pLocation, pCursor);
-            case AssemblerDirective::SPACE:     return DispatchSpaceDirective(pLocation, pCursor);
-            case AssemblerDirective::EXPORT:    return DispatchExportDirective(pLocation, pCursor);
-            case AssemblerDirective::IMPORT:    return DispatchImportDirective(pLocation, pCursor);
-            case AssemblerDirective::SECTION:   return DispatchSectionDirective(pLocation, pCursor);
-            case AssemblerDirective::ORG:       return DispatchOrgDirective(pLocation, pCursor);
-            case AssemblerDirective::ALIGN:     return DispatchAlignDirective(pLocation, pCursor);
+            case AssemblerDirective::CHARMAP:       return DispatchCharmapDirective(pLocation, pCursor);
+            case AssemblerDirective::NEWCHARMAP:    return DispatchNewCharmapDirective(pLocation, pCursor);
+            case AssemblerDirective::SETCHARMAP:    return DispatchSetCharmapDirective(pLocation, pCursor);
+            case AssemblerDirective::PUSHCHARMAP:   return DispatchPushCharmapDirective(pLocation, pCursor);
+            case AssemblerDirective::POPCHARMAP:    return DispatchPopCharmapDirective(pLocation, pCursor);
+            case AssemblerDirective::BYTE:          return DispatchByteDirective(pLocation, pCursor);
+            case AssemblerDirective::WORD:          return DispatchWordDirective(pLocation, pCursor);
+            case AssemblerDirective::DWORD:         return DispatchDoubleWordDirective(pLocation, pCursor);
+            case AssemblerDirective::ASCIZ:         return DispatchStringDirective(pLocation, pCursor);
+            case AssemblerDirective::SPACE:         return DispatchSpaceDirective(pLocation, pCursor);
+            case AssemblerDirective::EXPORT:        return DispatchExportDirective(pLocation, pCursor);
+            case AssemblerDirective::IMPORT:        return DispatchImportDirective(pLocation, pCursor);
+            case AssemblerDirective::SECTION:       return DispatchSectionDirective(pLocation, pCursor);
+            case AssemblerDirective::ORG:           return DispatchOrgDirective(pLocation, pCursor);
+            case AssemblerDirective::ALIGN:         return DispatchAlignDirective(pLocation, pCursor);
             default:
                 mDiag.ReportError(pLocation,
                     "Un-implemented assembler directive '{}'", pKeyword.StringifyType());
@@ -56,6 +61,119 @@ namespace G10::ASM
 
 namespace G10::ASM
 {
+    auto Parser::DispatchCharmapDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        // Syntax: `.CHARMAP "<CHAR>", <BYTE>`
+        auto node = std::make_shared<CharmapDirectiveNode>();
+        auto slice = pCursor.CollectLine();
+        TokenCursor cursor { slice };
+
+        auto character = EvaluateStringExpression(pLocation, cursor);
+        if (!character)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in '.CHARMAP' directive.");
+            return false;
+        }
+
+        if (!cursor.ExpectNextToken(TokenType::Comma))
+        {
+            mDiag.ReportError(pLocation,
+                "Expected comma after character in '.CHARMAP' directive.");
+            return false;
+        }
+
+        auto byte = EvaluateIntegerExpression(pLocation, cursor);
+        if (!byte)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected integer in '.CHARMAP' directive.");
+            return false;
+        }
+
+        node->mString = character;
+        node->mInteger = byte;
+        node->mLocation = pLocation;
+        mOutput.mNodes.push_back(node);
+        return true;
+    }
+
+    auto Parser::DispatchNewCharmapDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        // Syntax: `.NEWCHARMAP "<NAME>"`
+        auto node = std::make_shared<NewCharmapDirectiveNode>();
+        auto slice = pCursor.CollectLine();
+        TokenCursor cursor { slice };
+
+        auto name = EvaluateStringExpression(pLocation, cursor);
+        if (!name)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in '.NEWCHARMAP' directive.");
+            return false;
+        }
+
+        node->mString = name;
+        node->mLocation = pLocation;
+        mOutput.mNodes.push_back(node);
+        return true;    
+    }
+
+    auto Parser::DispatchSetCharmapDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        // Syntax: `.SETCHARMAP "<NAME>"`
+        auto node = std::make_shared<SetCharmapDirectiveNode>();
+        auto slice = pCursor.CollectLine();
+        TokenCursor cursor { slice };
+
+        auto name = EvaluateStringExpression(pLocation, cursor);
+        if (!name)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in '.SETCHARMAP' directive.");
+            return false;
+        }
+
+        node->mString = name;
+        node->mLocation = pLocation;
+        mOutput.mNodes.push_back(node);
+        return true;
+    }
+
+    auto Parser::DispatchPushCharmapDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        // Syntax: `.PUSHCHARMAP ["<NAME>"]`
+        // - "<NAME>" is optional.
+        auto node = std::make_shared<PushCharmapDirectiveNode>();
+        auto slice = pCursor.CollectLine();
+        TokenCursor cursor { slice };
+
+        // Check if a name is provided
+        auto name = EvaluateStringExpression(pLocation, cursor);
+        if (name != nullptr)
+        {
+            node->mString = name;
+        }
+
+        node->mLocation = pLocation;
+        mOutput.mNodes.push_back(node);
+        return true;
+    }
+
+    auto Parser::DispatchPopCharmapDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        // Syntax: `.POPCHARMAP`
+        auto node = std::make_shared<PopCharmapDirectiveNode>();
+        node->mLocation = pLocation;
+        mOutput.mNodes.push_back(node);
+        return true;
+    }
+
     auto Parser::DispatchByteDirective (const SourceLocation& pLocation,
         TokenCursor& pCursor) -> bool
     {

@@ -175,6 +175,11 @@ namespace G10::ASM
         { "RCL", Keyword { CPU::InstructionType::RL } },
         { "RCR", Keyword { CPU::InstructionType::RR } },
 
+        { ".CHARMAP", Keyword { AssemblerDirective::CHARMAP } },
+        { ".NEWCHARMAP", Keyword { AssemblerDirective::NEWCHARMAP } },
+        { ".SETCHARMAP", Keyword { AssemblerDirective::SETCHARMAP } },
+        { ".PUSHCHARMAP", Keyword { AssemblerDirective::PUSHCHARMAP } },
+        { ".POPCHARMAP", Keyword { AssemblerDirective::POPCHARMAP } },
         { ".BYTE", Keyword { AssemblerDirective::BYTE } },
         { ".WORD", Keyword { AssemblerDirective::WORD } },
         { ".DWORD", Keyword { AssemblerDirective::DWORD } },
@@ -187,6 +192,11 @@ namespace G10::ASM
         { ".ORG", Keyword { AssemblerDirective::ORG } },
         { ".ALIGN", Keyword { AssemblerDirective::ALIGN } },
 
+        { ".CMAP", Keyword { AssemblerDirective::CHARMAP } },
+        { ".NEWC", Keyword { AssemblerDirective::NEWCHARMAP } },
+        { ".SETC", Keyword { AssemblerDirective::SETCHARMAP } },
+        { ".PUSHC", Keyword { AssemblerDirective::PUSHCHARMAP } },
+        { ".POPC", Keyword { AssemblerDirective::POPCHARMAP } },
         { ".DB", Keyword { AssemblerDirective::BYTE } },
         { ".DW", Keyword { AssemblerDirective::WORD } },
         { ".DD", Keyword { AssemblerDirective::DWORD } },
@@ -210,6 +220,7 @@ namespace G10::ASM
 
         { ".CONST", Keyword { PreprocessorDirective::CONST } },
         { ".LET", Keyword { PreprocessorDirective::LET } },
+        { ".SNIPPET", Keyword { PreprocessorDirective::SNIPPET } },
         { ".IF", Keyword { PreprocessorDirective::IF } },
         { ".IFDEF", Keyword { PreprocessorDirective::IFDEF } },
         { ".IFNDEF", Keyword { PreprocessorDirective::IFNDEF } },
@@ -243,6 +254,7 @@ namespace G10::ASM
         { ".VAR", Keyword { PreprocessorDirective::LET } },
         { ".SET", Keyword { PreprocessorDirective::LET } },
         { ".MUT", Keyword { PreprocessorDirective::LET } },
+        { ".SNIP", Keyword { PreprocessorDirective::SNIPPET } },
         { ".ELIF", Keyword { PreprocessorDirective::ELSEIF } },
         { ".ENDC", Keyword { PreprocessorDirective::ENDIF } },
         { ".REPT", Keyword { PreprocessorDirective::REPEAT } },
@@ -603,6 +615,7 @@ namespace G10::ASM
                 {
                     case PreprocessorDirective::CONST: return ".CONST";
                     case PreprocessorDirective::LET: return ".LET";
+                    case PreprocessorDirective::SNIPPET: return ".SNIPPET";
                     case PreprocessorDirective::IF: return ".IF";
                     case PreprocessorDirective::IFDEF: return ".IFDEF";
                     case PreprocessorDirective::IFNDEF: return ".IFNDEF";
@@ -743,6 +756,11 @@ namespace G10::ASM
             { 
                 switch (pType)
                 {
+                    case AssemblerDirective::CHARMAP: return ".CHARMAP";
+                    case AssemblerDirective::NEWCHARMAP: return ".NEWCHARMAP";
+                    case AssemblerDirective::SETCHARMAP: return ".SETCHARMAP";
+                    case AssemblerDirective::PUSHCHARMAP: return ".PUSHCHARMAP";
+                    case AssemblerDirective::POPCHARMAP: return ".POPCHARMAP";
                     case AssemblerDirective::BYTE: return ".BYTE";
                     case AssemblerDirective::WORD: return ".WORD";
                     case AssemblerDirective::DWORD: return ".DWORD";

@@ -117,9 +117,7 @@ namespace G10::Boy
 
         while (mRunning == true)
         {
-            if (mShowEmulationWindow == true && mFocusEmulationWindow == true)
-                { mSystem.StepFrame(); }
-
+            mSystem.StepFrame();
             HandleEvents();
             Update();
             UpdateGUI();

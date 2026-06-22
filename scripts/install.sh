@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-# Gen, then build release.
-scripts/gen.sh
-scripts/build.sh config=release
-
 # Determine the install destination.
 LIB_INSTALL_DIR="${1:-/usr/local/lib}"
 BIN_INSTALL_DIR="${1:-/usr/local/bin}"

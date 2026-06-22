@@ -43,6 +43,11 @@ namespace G10::ASM
 
     enum class AssemblerDirective : std::uint8_t
     {
+        CHARMAP,
+        NEWCHARMAP,
+        SETCHARMAP,
+        PUSHCHARMAP,
+        POPCHARMAP,
         BYTE,
         WORD,
         DWORD,
@@ -74,6 +79,7 @@ namespace G10::ASM
     {
         CONST,
         LET,
+        SNIPPET,
         IF,
         IFDEF,
         IFNDEF,

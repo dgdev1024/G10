@@ -12,6 +12,13 @@
 #include <G10.ASM.Diagnostic.hpp>
 #include <G10.ASM.Syntax.hpp>
 
+// Types ***********************************************************************
+
+namespace G10::ASM
+{
+    using Charmap = std::unordered_map<std::string, std::uint8_t>;
+}
+
 // Constants & Enumerations ****************************************************
 
 namespace G10::ASM
@@ -141,6 +148,11 @@ namespace G10::ASM
     private: // Methods - Dispatch *********************************************
 
         auto Dispatch (const std::shared_ptr<SyntaxNode>& pNode) -> bool;
+        auto DispatchCharmapDirective (const CharmapDirectiveNode& pNode) -> bool;
+        auto DispatchNewCharmapDirective (const NewCharmapDirectiveNode& pNode) -> bool;
+        auto DispatchSetCharmapDirective (const SetCharmapDirectiveNode& pNode) -> bool;
+        auto DispatchPushCharmapDirective (const PushCharmapDirectiveNode& pNode) -> bool;
+        auto DispatchPopCharmapDirective (const PopCharmapDirectiveNode& pNode) -> bool;
         auto DispatchByteDirective (const ByteDirectiveNode& pNode) -> bool;
         auto DispatchWordDirective (const WordDirectiveNode& pNode) -> bool;
         auto DispatchDoubleWordDirective (const DoubleWordDirectiveNode& pNode) -> bool;
@@ -290,7 +302,7 @@ namespace G10::ASM
         auto EmitWord (std::uint16_t pWord) -> bool;
         auto EmitDoubleWord (std::uint32_t pDoubleWord) -> bool;
         auto EmitLabel (const std::string& pLabel, std::uint32_t pAddress) -> bool;
-        auto EmitString (const std::string& pString, bool pNoTerminator = false) -> bool;
+        auto EmitString (const std::string& pString, bool pUseCharmap = false, bool pNoTerminator = false) -> bool;
         auto EmitOpcode (std::uint16_t pOpcode) -> bool;
         auto EmitOpcode (std::uint8_t pOpcode, std::uint8_t pParamX, std::uint8_t pParamY) -> bool;
 
@@ -310,6 +322,10 @@ namespace G10::ASM
 
         std::vector<char>                               mStringBuffer;
         std::unordered_map<std::string, std::uint32_t>  mStringLookup;
+
+        std::unordered_map<std::string, Charmap>        mCharmaps {};
+        std::stack<std::string>                         mCharmapStack {};
+        std::string                                     mActiveCharmap { "" };
 
         std::uint32_t                                   mActiveSectionIndex { stx::npos32 };
         ObjectHeader                                    mHeader {};

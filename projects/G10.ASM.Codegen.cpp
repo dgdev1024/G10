@@ -16,6 +16,7 @@ namespace G10::ASM
         mDiag { pDiag }
     {
         mStringBuffer.emplace_back('\0');
+        mCharmaps[""] = {};
     }
 }
 
@@ -377,7 +378,7 @@ namespace G10::ASM
         return true;
     }
 
-    auto Codegen::EmitString (const std::string& pString, bool pNoTerminator) -> bool
+    auto Codegen::EmitString (const std::string& pString, bool pUseCharmap, bool pNoTerminator) -> bool
     {
         if (mActiveSectionIndex == stx::npos32)
         {
@@ -394,13 +395,47 @@ namespace G10::ASM
 
         stx::byte_view view { ctx.mData };
         
-        if (pNoTerminator == true)
+        if (pUseCharmap == true)
         {
-            for (const auto c : pString)
-                { view.push_byte(c); }
+            const auto& activeCharmap = mCharmaps[mActiveCharmap];
+            std::string str = pString;
+            while (str.empty() == false)
+            {
+                bool found = false;
+                for (const auto& [ch, code] : activeCharmap)
+                {
+                    // Important: `ch` is not always one character!
+                    if (str.compare(0, ch.length(), ch) == 0)
+                    {
+                        view.push_byte(code);
+                        str.erase(0, ch.length());
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found == false)
+                {
+                    view.push_byte(str[0]);
+                    str.erase(0, 1);
+                }
+            }
+
+            if (pNoTerminator == false)
+            {
+                view.push_byte(0);
+            }
         }
         else
-            { view.push_string(pString); }
+        {
+            if (pNoTerminator == true)
+            {
+                for (const auto c : pString)
+                    { view.push_byte(c); }
+            }
+            else
+                { view.push_string(pString); }
+        }
 
         ctx.mHeader.mDataSize = ctx.mLocationCounter =
             static_cast<std::uint32_t>(ctx.mData.size());
