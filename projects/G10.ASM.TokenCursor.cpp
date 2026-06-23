@@ -130,7 +130,9 @@ namespace G10::ASM
         const std::size_t start = mIndex;
         while (
             mIndex < mSlice.size() &&
-            mSlice[mIndex].mType != pType
+            mSlice[mIndex].mType != pType &&
+            mSlice[mIndex].mType != TokenType::EndOfFile &&
+            mSlice[mIndex].mType != TokenType::NewLine
         ) { ++mIndex; }
 
         return mSlice.subspan(start, mIndex - start);

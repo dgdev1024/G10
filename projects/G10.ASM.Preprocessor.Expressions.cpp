@@ -394,10 +394,36 @@ namespace G10::ASM
                 {
                     return (*std::get_if<PreprocessorValue>(&arg));
                 }
+                else if (std::holds_alternative<TokenSlice>(arg))
+                {
+                    auto slice = std::get_if<TokenSlice>(&arg);
+                    TokenCursor cursor { *slice };
+
+                    auto val = CollectAndEvaluate(cursor);
+                    if (val.IsUndefined() == true)
+                    {
+                        if (slice->size() == 1 &&
+                            slice->back().mType == TokenType::Identifier)
+                        {
+                            return PreprocessorValue { PreprocessorString {
+                                slice->back().Stringify().value_or("")
+                            }};
+                        }
+
+                        mDiag.ReportError(token.mLocation,
+                            "Macro argument '{}' does not resolve to a value.",
+                            *lexeme);
+                        mPendingStatus = PreprocessStatus::Error;
+                        return {};
+                    }
+
+                    return val;
+                }
                 else
                 {
                     mDiag.ReportError(token.mLocation,
-                        "Macro argument does not resolve to a value.");
+                        "Macro argument '{}' does not resolve to a value.",
+                        *lexeme);
                     mPendingStatus = PreprocessStatus::Error;
                     return {};
                 }
@@ -687,7 +713,7 @@ namespace G10::ASM
             Lexer lexer { mDiag };
             if (lexer.LexString(interpolation, false) == false)
             {
-                mDiag.ReportError(pLocation,
+                mDiag.ReportInfo(pLocation,
                     "Error lexing interpolation in string.");
                 return std::nullopt;
             }
@@ -696,7 +722,7 @@ namespace G10::ASM
             auto value = EvaluateExpression(cursor);
             if (value.IsUndefined() == true)
             {
-                mDiag.ReportError(pLocation,
+                mDiag.ReportInfo(pLocation,
                     "Error evaluating interpolation in string.");
                 return std::nullopt;
             }
@@ -777,7 +803,7 @@ namespace G10::ASM
             Lexer lexer { mDiag };
             if (lexer.LexString(interpolation, false) == false)
             {
-                mDiag.ReportError(pLocation,
+                mDiag.ReportInfo(pLocation,
                     "Error lexing interpolation in identifier.");
                 return std::nullopt;
             }
@@ -786,7 +812,7 @@ namespace G10::ASM
             auto value = EvaluateExpression(cursor);
             if (value.IsUndefined() == true)
             {
-                mDiag.ReportError(pLocation,
+                mDiag.ReportInfo(pLocation,
                     "Error evaluating interpolation in identifier.");
                 return std::nullopt;
             }
