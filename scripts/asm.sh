@@ -5,12 +5,12 @@ set -e
 
 # Look for the `g10-asm` binary in either `./build/bin/linux-debug` or
 # `./build/bin/linux-release`.
-if [ -f "./build/bin/linux-debug-slow/g10-asm" ]; then
-    ASM_BINARY="./build/bin/linux-debug-slow/g10-asm"
+if [ -f "./build/bin/linux-release/g10-asm" ]; then
+    ASM_BINARY="./build/bin/linux-release/g10-asm"
 elif [ -f "./build/bin/linux-debug/g10-asm" ]; then
     ASM_BINARY="./build/bin/linux-debug/g10-asm"
-elif [ -f "./build/bin/linux-release/g10-asm" ]; then
-    ASM_BINARY="./build/bin/linux-release/g10-asm"
+elif [ -f "./build/bin/linux-debug-slow/g10-asm" ]; then
+    ASM_BINARY="./build/bin/linux-debug-slow/g10-asm"
 else
     echo "Error: g10-asm binary not found. Run './scripts/full-build.sh' to build it."
     exit 1

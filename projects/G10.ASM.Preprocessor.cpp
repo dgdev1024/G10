@@ -149,4 +149,44 @@ namespace G10::ASM
 
     auto Preprocessor::ResetStatus () -> void
         { mPendingStatus = PreprocessStatus::OK; }
+
+    auto Preprocessor::DeepSlice (std::span<Token> pTokens) -> std::vector<Token>
+    {
+        std::vector<Token> tokens(std::from_range, pTokens);
+        for (std::size_t i = 0; i < tokens.size(); ++i)
+        {
+            const auto& token = tokens[i];
+            if (token.mType != TokenType::Identifier)
+                { continue; }
+
+            auto findIt = mSnippets.find(token.Stringify().value_or(""));
+            if (findIt != mSnippets.end())
+            {
+                tokens.erase(tokens.begin() + i);
+                tokens.insert_range(tokens.begin() + i, findIt->second.mBody);
+            }
+        }
+
+        return tokens;
+    }
+
+    auto Preprocessor::DeepSlice (std::span<const Token> pTokens) -> std::vector<Token>
+    {
+        std::vector<Token> tokens(std::from_range, pTokens);
+        for (std::size_t i = 0; i < tokens.size(); ++i)
+        {
+            const auto& token = tokens[i];
+            if (token.mType != TokenType::Identifier)
+                { continue; }
+
+            auto findIt = mSnippets.find(token.Stringify().value_or(""));
+            if (findIt != mSnippets.end())
+            {
+                tokens.erase(tokens.begin() + i);
+                tokens.insert_range(tokens.begin() + i, findIt->second.mBody);
+            }
+        }
+
+        return tokens;
+    }
 }

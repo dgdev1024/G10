@@ -15,6 +15,10 @@ namespace G10::ASM
     TokenCursor::TokenCursor (TokenSlice pSlice) :
         mSlice  { pSlice }
     {}
+
+    TokenCursor::TokenCursor (std::vector<Token>& pTokens) :
+        mSlice  { pTokens }
+    {}
 }
 
 // Public Methods **************************************************************

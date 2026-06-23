@@ -243,7 +243,7 @@ namespace G10::ASM
     auto Preprocessor::DispatchPrint (TokenCursor& pCursor, 
         const SourceLocation& pLocation, bool pNewline) -> bool
     {
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -273,7 +273,7 @@ namespace G10::ASM
     auto Preprocessor::DispatchInfo (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -297,7 +297,7 @@ namespace G10::ASM
     auto Preprocessor::DispatchWarning (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -330,7 +330,7 @@ namespace G10::ASM
     auto Preprocessor::DispatchError (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -354,7 +354,7 @@ namespace G10::ASM
     auto Preprocessor::DispatchAssert (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -362,11 +362,11 @@ namespace G10::ASM
             return false;
         }
 
-        TokenSlice messageSlice {};
+        std::vector<Token> messageSlice {};
         PreprocessorString message { "Assertion Failure." };
         if (pCursor.ExpectNextToken(TokenType::Comma).has_value() == true)
         {
-            messageSlice = pCursor.CollectExpression();
+            messageSlice = DeepSlice(pCursor.CollectExpression());
             TokenCursor messageCursor { messageSlice };
             auto messageVal = EvaluateExpression(messageCursor);
             if (messageVal.IsString() == false)
@@ -414,6 +414,19 @@ namespace G10::ASM
             nameToken.Stringify().value_or(""));
         if (nameLexeme.has_value() == false)
             { return false; }
+
+        if (mSnippets.contains(*nameLexeme) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of snippet '{}' as variable.", *nameLexeme);
+            return false;
+        }
+        else if (mMacros.contains(*nameLexeme) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of macro '{}' as variable.", *nameLexeme);
+            return false;
+        }
 
         // Check the symbols map. Ensure that we are not attempting to overwrite
         // another constant.
@@ -514,6 +527,19 @@ namespace G10::ASM
         if (nameLexeme.has_value() == false)
             { return false; }
 
+        if (mSnippets.contains(*nameLexeme) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of snippet '{}' as constant.", *nameLexeme);
+            return false;
+        }
+        else if (mMacros.contains(*nameLexeme) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of macro '{}' as constant.", *nameLexeme);
+            return false;
+        }
+
         // Check the symbols map. Ensure that we are not attempting to overwrite
         // another constant.
         auto findIt = mSymbols.find(*nameLexeme);
@@ -541,7 +567,7 @@ namespace G10::ASM
         pCursor.ExpectNextToken(TokenType::AssignEqual);
 
         // Collect and evaluate the expression ahead. Store its value.
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -578,7 +604,7 @@ namespace G10::ASM
         std::vector<PreprocessorConditional> branches {};
 
         // Expect an expression after the `.IF`.
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -587,16 +613,18 @@ namespace G10::ASM
         }
 
         // Collect the body for the first branch.
-        auto condSlice = pCursor.CollectConditional();
-        if (condSlice.has_value() == false)
+        auto condSliceOpt = pCursor.CollectConditional();
+        if (condSliceOpt.has_value() == false)
         {
             mDiag.ReportError(pLocation,
                 "'.IF' without matching '.ENDIF'.");
             return false;
         }
+        auto condSlice = DeepSlice(*condSliceOpt);
 
         // Store the first branch, then check for further branches.
-        branches.emplace_back(PreprocessorConditional { exprSlice, *condSlice });
+        branches.emplace_back(PreprocessorConditional { std::move(exprSlice), 
+            std::move(condSlice) });
 
         bool foundElse = false;
         while (true)
@@ -606,7 +634,7 @@ namespace G10::ASM
             if (type == PreprocessorDirective::ENDIF)
                 { break; }
             
-            TokenSlice exprSlice {};
+            std::vector<Token> exprSlice {};
             if (type == PreprocessorDirective::ELSEIF)
             {
                 if (foundElse == true)
@@ -616,7 +644,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                exprSlice = pCursor.CollectExpression();
+                exprSlice = DeepSlice(pCursor.CollectExpression());
             }
             else if (type == PreprocessorDirective::ELSE)
             {
@@ -630,8 +658,8 @@ namespace G10::ASM
                 foundElse = true;
             }
 
-            auto condSlice = pCursor.CollectConditional();
-            if (condSlice.has_value() == false)
+            auto condSliceOpt = pCursor.CollectConditional();
+            if (condSliceOpt.has_value() == false)
             {
                 mDiag.ReportError(pLocation,
                     "'{}' without matching '.ENDIF'.",
@@ -639,16 +667,18 @@ namespace G10::ASM
                 return false;
             }
 
-            branches.emplace_back(PreprocessorConditional { exprSlice, *condSlice });
+            auto condSlice = DeepSlice(*condSliceOpt);
+            branches.emplace_back(PreprocessorConditional { std::move(exprSlice), 
+                std::move(condSlice) });
         }
 
-        for (const auto& branch : branches)
+        for (auto& branch : branches)
         {
             bool branchGood = false;
             bool isElseCase = branch.mExprSlice.empty();
             if (isElseCase == false)
             {
-                TokenCursor exprCursor { branch.mExprSlice };
+                TokenCursor exprCursor(branch.mExprSlice);
                 auto exprVal = EvaluateExpression(exprCursor);
                 if (exprVal.IsUndefined() == true)
                     { return false; }
@@ -676,7 +706,7 @@ namespace G10::ASM
         const SourceLocation& pLocation) -> bool
     {
         // Collect and evaluate the expression following the `.REPEAT` directive.
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -685,13 +715,14 @@ namespace G10::ASM
         }
 
         // Next, collect the body slice.
-        auto bodySlice = pCursor.CollectBody(PreprocessorDirective::REPEAT);
-        if (bodySlice.has_value() == false)
+        auto bodySliceOpt = pCursor.CollectBody(PreprocessorDirective::REPEAT);
+        if (bodySliceOpt.has_value() == false)
         {
             mDiag.ReportError(pLocation,
                 "'.REPEAT' without matching '.ENDREPEAT'.");
             return false;
         }
+        auto bodySlice = DeepSlice(*bodySliceOpt);
 
         // Skip past the `.ENDREPEAT` directive.
         pCursor.Skip();
@@ -719,7 +750,7 @@ namespace G10::ASM
         PreprocessorInteger count = *exprVal.GetInteger();
         while (count > 0)
         {
-            auto status = Preprocess(*bodySlice);
+            auto status = Preprocess(bodySlice);
             if (status == PreprocessStatus::Break)
                 { ResetStatus(); break; }
             if (status == PreprocessStatus::Continue)
@@ -738,7 +769,7 @@ namespace G10::ASM
         const SourceLocation& pLocation) -> bool
     {
         // Collect the conditional expression after the `.WHILE` directive.
-        auto exprSlice = pCursor.CollectExpression();
+        auto exprSlice = DeepSlice(pCursor.CollectExpression());
         if (exprSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -747,13 +778,14 @@ namespace G10::ASM
         }
 
         // Next, collect the body slice.
-        auto bodySlice = pCursor.CollectBody(PreprocessorDirective::WHILE);
-        if (bodySlice.has_value() == false)
+        auto bodySliceOpt = pCursor.CollectBody(PreprocessorDirective::WHILE);
+        if (bodySliceOpt.has_value() == false)
         {
             mDiag.ReportError(pLocation,
                 "'.WHILE' without matching '.ENDWHILE'.");
             return false;
         }
+        auto bodySlice = DeepSlice(*bodySliceOpt);
 
         // Skip past the `.ENDWHILE` directive.
         pCursor.Skip();
@@ -776,7 +808,7 @@ namespace G10::ASM
             else if (val.IsTruthy() == false)
                 { break; }
 
-            auto status = Preprocess(*bodySlice);
+            auto status = Preprocess(bodySlice);
             if (status == PreprocessStatus::Break)
                 { ResetStatus(); break; }
             if (status == PreprocessStatus::Continue)
@@ -816,7 +848,7 @@ namespace G10::ASM
         }
 
         // Next, collect the start expression.
-        auto startSlice = pCursor.CollectExpression();
+        auto startSlice = DeepSlice(pCursor.CollectExpression());
         if (startSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -832,7 +864,7 @@ namespace G10::ASM
         }
 
         // Repeat for the end expression.
-        auto endSlice = pCursor.CollectExpression();
+        auto endSlice = DeepSlice(pCursor.CollectExpression());
         if (endSlice.empty() == true)
         {
             mDiag.ReportError(pLocation,
@@ -842,10 +874,10 @@ namespace G10::ASM
 
         // At this point, if there is a comma, then expect the optional step
         // expression.
-        TokenSlice stepSlice {};
+        std::vector<Token> stepSlice {};
         if (pCursor.ExpectNextToken(TokenType::Comma).has_value() == true)
         {
-            stepSlice = pCursor.CollectExpression();
+            stepSlice = DeepSlice(pCursor.CollectExpression());
             if (stepSlice.empty() == true)
             {
                 mDiag.ReportError(pLocation,
@@ -855,13 +887,14 @@ namespace G10::ASM
         }
 
         // Now collect the '.FOR' loop's body. Skip past the `.ENDFOR`.
-        auto bodySlice = pCursor.CollectBody(PreprocessorDirective::FOR);
-        if (bodySlice.has_value() == false)
+        auto bodySliceOpt = pCursor.CollectBody(PreprocessorDirective::FOR);
+        if (bodySliceOpt.has_value() == false)
         {
             mDiag.ReportError(pLocation,
                 "'.FOR' without matching '.ENDFOR'.");
             return false;
         }
+        auto bodySlice = DeepSlice(*bodySliceOpt);
         pCursor.Skip();
 
         // Next, evalaute the start expression. Store the evaluated start value 
@@ -929,7 +962,7 @@ namespace G10::ASM
             ) { break; }
 
             // At this point, carry out our loop.
-            auto status = Preprocess(*bodySlice);
+            auto status = Preprocess(bodySlice);
             if (status == PreprocessStatus::Break)
                 { ResetStatus(); break; }
             if (status == PreprocessStatus::Continue)
@@ -1006,23 +1039,60 @@ namespace G10::ASM
         if (nameToken.has_value() == false)
         {
             mDiag.ReportError(pLocation,
-                "Expected identifier after '.DEF' directive.");
+                "Expected identifier after '.SNIPPET' directive.");
             return false;
         }
         auto name = InterpolateIdentifier(pLocation, nameToken->Stringify().value_or(""));
         if (name.has_value() == false)
             { return false; }
 
-        // 2. Collect the snippet's body. This will run until the end of the line
-        //    or file.
-        auto bodySlice = pCursor.CollectLine();
+        if (mSymbols.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of symbol '{}' as snippet.", *name);
+            return false;
+        }
+        else if (mSnippets.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of snippet '{}'.", *name);
+            return false;
+        }
+        else if (mMacros.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of macro '{}' as snippet.", *name);
+            return false;
+        }
 
-        // 3. Create the snippet structure.
+        // Optional: If we find an equals sign here, skip over it.
+        pCursor.ExpectNextToken(TokenType::AssignEqual);
+
+        // 2. Evaluate the snippet string.
+        auto snippetSlice = DeepSlice(pCursor.CollectLine());
+        TokenCursor snippetCursor { snippetSlice };
+        auto snippetVal = EvaluatePrimary(snippetCursor);
+        if (snippetVal.IsString() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string after name in '.SNIPPET' '{}'.", *name);
+            return false;
+        }
+
+        // 3. Perform lexical analysis on the string.
+        Lexer lexer { mDiag };
+        if (lexer.LexString(*snippetVal.GetString(), false) == false)
+        {
+            mDiag.ReportInfo(pLocation,
+                "Error lexing snippet '{}'.", *name);
+            return false;
+        }
+
+        // 4. Create the snippet structure.
         PreprocessorSnippet snippet {};
         snippet.mName = *name;
         snippet.mLocation = pLocation;
-        snippet.mBody.assign_range(bodySlice);
-
+        snippet.mBody = lexer.GetTokens();
         mSnippets[*name] = std::move(snippet);
 
         return true;
@@ -1042,6 +1112,25 @@ namespace G10::ASM
         auto name = InterpolateIdentifier(pLocation, nameToken->Stringify().value_or(""));
         if (name.has_value() == false)
             { return false; }
+
+        if (mSymbols.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of symbol '{}' as macro.", *name);
+            return false;
+        }
+        else if (mSnippets.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of snippet '{}' as macro.", *name);
+            return false;
+        }
+        else if (mMacros.contains(*name) == true)
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted re-definition of macro '{}'.", *name);
+            return false;
+        }
 
         // 2. Collect the macro's named parameter list, then its body.
         auto paramSlice = pCursor.CollectLine();
@@ -1100,7 +1189,7 @@ namespace G10::ASM
         } else { mRecursionDepth++; }
 
         // 1. Collect the arguments being passed into the macro.
-        auto argSlice = pCursor.CollectLine();
+        auto argSlice = DeepSlice(pCursor.CollectLine());
         
         // 2. Push the macro call into the call stack, then parse the arguments
         // list.
@@ -1162,7 +1251,7 @@ namespace G10::ASM
         }
 
         PreprocessorValue shiftCount { PreprocessorInteger { 1 }};
-        auto countSlice = pCursor.CollectExpression();
+        auto countSlice = DeepSlice(pCursor.CollectExpression());
         if (countSlice.empty() == false)
         {
             TokenCursor countCursor { countSlice };
@@ -1224,7 +1313,7 @@ namespace G10::ASM
         const SourceLocation& pLocation) -> bool
     {
         // 1. Collect and evaluate the expression after the directive.
-        auto fileSlice = pCursor.CollectExpression();
+        auto fileSlice = DeepSlice(pCursor.CollectExpression());
         if (fileSlice.empty())
         {
             mDiag.ReportError(pLocation,

@@ -190,6 +190,15 @@ namespace G10::ASM
                 mType == TokenType::RightParenthesis;
         }
 
+        inline constexpr auto IsOperator (bool pCanBeAssignment = false) const -> bool
+        {
+            return
+                GetGroup() == TokenGroup::ArithmeticOperator ||
+                GetGroup() == TokenGroup::LogicalOperator ||
+                GetGroup() == TokenGroup::ComparisonOperator ||
+                (pCanBeAssignment == true && GetGroup() == TokenGroup::AssignmentOperator);
+        }
+
         auto IsValidSecondPass () const -> bool;
         auto StringifyType () const -> std::string_view;
         auto StringifyGroup () const -> std::string_view;

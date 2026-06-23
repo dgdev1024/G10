@@ -43,9 +43,9 @@ namespace G10::ASM
 {
     struct PreprocessorSymbol final
     {
-        PreprocessorValue   mValue {};
-        bool                mIsConstant { false };
-        SourceLocation      mLocation {};
+        PreprocessorValue           mValue {};
+        bool                        mIsConstant { false };
+        SourceLocation              mLocation {};
     };
 
     struct PreprocessorSnippet final
@@ -74,8 +74,8 @@ namespace G10::ASM
 
     struct PreprocessorConditional final
     {
-        TokenSlice          mExprSlice {};
-        TokenSlice          mBodySlice {};
+        std::vector<Token>  mExprSlice {};
+        std::vector<Token>  mBodySlice {};
     };
 }
 
@@ -110,6 +110,8 @@ namespace G10::ASM
 
         auto AcknowledgeStatus () -> PreprocessStatus;
         auto ResetStatus () -> void;
+        auto DeepSlice (std::span<Token> pTokens) -> std::vector<Token>;
+        auto DeepSlice (std::span<const Token> pTokens) -> std::vector<Token>;
 
     private: // Methods - Dispatch *********************************************
 
@@ -168,7 +170,7 @@ namespace G10::ASM
             const PreprocessorValue& pRight, const Token& pOperator) -> PreprocessorValue&;
         auto ApplyBinary (const PreprocessorValue& pLeft, 
             const PreprocessorValue& pRight, const Token& pOperator) -> PreprocessorValue;
-        auto ApplyUnary (const PreprocessorValue& pRight, 
+        auto ApplyPrefixUnary (const PreprocessorValue& pRight, 
             const Token& pOperator) -> PreprocessorValue;
 
     private: // Methods - Expressions - Arithmetic *****************************

@@ -16,7 +16,7 @@ namespace G10::ASM
     auto Preprocessor::CollectAndEvaluate (TokenCursor& pCursor) -> PreprocessorValue
     {
         auto        startIndex = pCursor.GetIndex();
-        auto        exprSlice = pCursor.CollectExpression();
+        auto        exprSlice = DeepSlice(pCursor.CollectExpression());
         TokenCursor exprCursor { exprSlice };
         auto        exprValue = EvaluateExpression(exprCursor);
         if (exprValue.IsUndefined())
@@ -81,7 +81,7 @@ namespace G10::ASM
         }
     }
 
-    auto Preprocessor::ApplyUnary (const PreprocessorValue& pRight, 
+    auto Preprocessor::ApplyPrefixUnary (const PreprocessorValue& pRight, 
         const Token& pOperator) -> PreprocessorValue
     {
         switch (pOperator.mType)
@@ -239,7 +239,7 @@ namespace G10::ASM
         {
             pCursor.Skip();
             auto right = EvaluateUnary(pCursor);
-            return ApplyUnary(right, op);
+            return ApplyPrefixUnary(right, op);
         }
 
         return EvaluatePrimary(pCursor);

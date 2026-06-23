@@ -27,6 +27,7 @@ namespace G10::ASM
 
         TokenCursor () = default;
         explicit TokenCursor (TokenSlice pSlice);
+        explicit TokenCursor (std::vector<Token>& pTokens);
 
     public: // Methods *********************************************************
 
