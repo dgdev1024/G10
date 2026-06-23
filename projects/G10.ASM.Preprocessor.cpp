@@ -162,6 +162,20 @@ namespace G10::ASM
             auto findIt = mSnippets.find(token.Stringify().value_or(""));
             if (findIt != mSnippets.end())
             {
+                for (const auto& inner : findIt->second.mBody)
+                {
+                    auto findIt = mSnippets.find(inner.Stringify().value_or(""));
+                    if (findIt != mSnippets.end())
+                    {
+                        mDiag.ReportError(inner.mLocation,
+                            "Attempted expansion of snippet '{}' inside of snippet '{}'.",
+                            inner.Stringify().value_or(""),
+                            token.Stringify().value_or(""));
+                        mPendingStatus = PreprocessStatus::Error;
+                        return {};
+                    }
+                }
+
                 tokens.erase(tokens.begin() + i);
                 tokens.insert_range(tokens.begin() + i, findIt->second.mBody);
             }
@@ -182,6 +196,20 @@ namespace G10::ASM
             auto findIt = mSnippets.find(token.Stringify().value_or(""));
             if (findIt != mSnippets.end())
             {
+                for (const auto& inner : findIt->second.mBody)
+                {
+                    auto findIt = mSnippets.find(inner.Stringify().value_or(""));
+                    if (findIt != mSnippets.end())
+                    {
+                        mDiag.ReportError(inner.mLocation,
+                            "Attempted expansion of snippet '{}' inside of snippet '{}'.",
+                            inner.Stringify().value_or(""),
+                            token.Stringify().value_or(""));
+                        mPendingStatus = PreprocessStatus::Error;
+                        return {};
+                    }
+                }
+
                 tokens.erase(tokens.begin() + i);
                 tokens.insert_range(tokens.begin() + i, findIt->second.mBody);
             }

@@ -1088,6 +1088,20 @@ namespace G10::ASM
             return false;
         }
 
+        for (const auto& token : lexer.GetTokens())
+        {
+            if (token.mType != TokenType::Identifier)
+                { continue; }
+
+            auto str = token.Stringify().value_or("");
+            if (str == *name)
+            {
+                mDiag.ReportError(pLocation,
+                    "Encountered infinite recursion in definition of '.SNIPPET' '{}'.", *name);
+                return false;
+            }
+        }
+
         // 4. Create the snippet structure.
         PreprocessorSnippet snippet {};
         snippet.mName = *name;
