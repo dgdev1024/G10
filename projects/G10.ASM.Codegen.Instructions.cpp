@@ -66,8 +66,8 @@ namespace G10::ASM
     auto Codegen::DispatchDAA (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x0600 DAA`
-        // - Decimal-adjusts the low byte accumulator register.
+        // `0x06X0 DAA LX`
+        // - Decimal-adjusts a low byte register.
         // - 1 operand.
         if (pNode.mOperands.empty())
         {
@@ -3342,7 +3342,7 @@ namespace G10::ASM
     {
         // `0x9400 RLCA`
         // - Rotates byte accumulator left by one bit.
-        return EmitOpcode(0x9300);
+        return EmitOpcode(0x9400);
     }
 
     auto Codegen::DispatchRLC (const InstructionStatementNode& pNode,
