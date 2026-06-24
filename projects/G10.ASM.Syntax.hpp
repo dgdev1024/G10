@@ -264,6 +264,7 @@ namespace G10::ASM
     struct G10_API LabelStatementNode final : StatementNode
     {
         LabelExpressionNode mLabelExpr {};
+        bool mWillExport { false };
         
     public:
         auto Stringify (std::size_t pIndent = 0) const -> std::string override;

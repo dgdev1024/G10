@@ -7,59 +7,50 @@
 
 .include "hardware.inc"
 
-; Imports **********************************************************************
-
-.import wRole
-.import wSendByte
-.import wRecvByte
-.import wJoypadState
-.import wJoypadPressed
-.import wHostPhase
-
 ; Subroutine Code **************************************************************
 
 .section "Subroutines", code
 
-    WaitForVerticalBlank:
+    WaitForVerticalBlank::
         ldp l0, [rLY]
         cmp l0, LY_VBLANK
         jpb cs, WaitForVerticalBlank
         ret
 
-    CopyBytes:                          ; `D13`: destination; `D14`: source; `W15`: count
+    CopyBytes::                          ; `D13`: destination; `D14`: source; `W15`: count
         mv l0, h15
         or l0, l15
         ret zs
         xor l0, l0
-    CopyBytes.loop:
+    .loop:
         ld l0, [d14]
         sti [d13], l0
         inc d14
         dec w15
         mv l0, h15
         or l0, l15
-        jpb zc, CopyBytes.loop
+        jpb zc, .loop
         ret
 
-    SetBytes:                           ; `D13`: target; `L14`: value; `W15`: count
+    SetBytes::                           ; `D13`: target; `L14`: value; `W15`: count
         mv l0, h15
         or l0, l15
         ret zs
-    SetBytes.loop:
+    .loop:
         sti [d13], l14
         dec w15
         mv l0, h15
         or l0, l15
-        jpb zc, SetBytes.loop
+        jpb zc, .loop
         ret
 
-    SerialHandler:
+    SerialHandler::
         push d0
         ldp l0, [rSB]
         st [wRecvByte], l0
         ld l0, [wRole]
         and l0, l0
-        jpb zc, SerialHandler.host
+        jpb zc, .host
 
         ; If client, then set the next SendByte to the byte we just received.
         ld l0, [wRecvByte]
@@ -70,13 +61,13 @@
         ld l0, $80
         stp [rSC], l0
         inc d11
-        jpb SerialHandler.done
+        jpb .done
 
-    SerialHandler.host:
+    .host:
         ; Check if we need to pulse the clock a second time
         ld l0, [wHostPhase]
         and l0, l0
-        jpb zs, SerialHandler.done  ; If 0, we just received the reply. We are done!
+        jpb zs, .done  ; If 0, we just received the reply. We are done!
 
         ; We are in Phase 1. The byte currently in wRecvByte is junk.
         ; We need to clock the connection again to fetch the Client's actual reply.
@@ -95,11 +86,11 @@
         ld l0, $81
         stp [rSC], l0
 
-    SerialHandler.done:
+    .done:
         pop d0
         reti
 
-    ReadJoypad:
+    ReadJoypad::
         ld l0, JOYP_GET_BUTTONS         ; Get Action Buttons
         stp [rJOYP], l0
         ldp l0, [rJOYP]
@@ -127,20 +118,20 @@
         stp [rJOYP], l0
         ret
 
-    UpdateUI:
+    UpdateUI::
         call WaitForVerticalBlank
 
         ; Draw Role
         ld l0, [wRole]
         and l0, l0
-        jpb zs, UpdateUI.drawClient
+        jpb zs, .drawClient
         ld l0, $11
-        jpb UpdateUI.drawRole
+        jpb .drawRole
 
-    UpdateUI.drawClient:
+    .drawClient:
         ld l0, $12
 
-    UpdateUI.drawRole:
+    .drawRole:
         st [mVRAM + $1842], l0
 
         ; Draw Sent Byte
@@ -159,7 +150,7 @@
 
         ret
 
-    ByteToHex:
+    ByteToHex::
         mv l1, l0
         swap l0
         and l0, $0F
@@ -169,14 +160,3 @@
         mv l2, l0
         mv l0, l3
         ret
-
-
-; Exports **********************************************************************
-
-.export WaitForVerticalBlank
-.export CopyBytes
-.export SetBytes
-.export SerialHandler
-.export ReadJoypad
-.export UpdateUI
-.export ByteToHex

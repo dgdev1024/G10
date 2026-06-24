@@ -16,15 +16,15 @@
 
 .section "Main", code
     main:       ld d1, SoundHigh
-                xor l0, l0
-                stp [rNR10], l0
-                ldi l0, [d1]
-                stp [rNR11], l0
-                ldi l0, [d1]
-                stp [rNR12], l0
-                ldi l0, [d1]
-                stp [rNR13], l0
-                ldi l0, [d1]
-                stp [rNR14], l0
+                ld h0, 0
+                stp [rNR10], h0
+                ldi h0, [d1]
+                stp [rNR11], h0
+                ldi h0, [d1]
+                stp [rNR12], h0
+                ldi h0, [d1]
+                stp [rNR13], h0
+                ldi h0, [d1]
+                stp [rNR14], h0
 
-    main_done:  jpb main_done
+    .done:      jpb .done

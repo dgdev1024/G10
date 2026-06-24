@@ -160,21 +160,24 @@ namespace G10::ASM
 
     auto Codegen::ResolveSymbol (const std::string& pName) -> std::uint32_t
     {
-        auto it = mSymbolNameIndices.find(pName);
+        std::string name = (pName.starts_with('.')) ?
+            mLastParentLabel + pName : pName;
+
+        auto it = mSymbolNameIndices.find(name);
         if (it != mSymbolNameIndices.end())
             { return it->second; }
 
         std::uint32_t index = static_cast<std::uint32_t>(mSymbols.size());
 
         mSymbols.emplace_back(ObjectSymbolEntry {
-            .mNameStringOffset  = AddString(pName),
+            .mNameStringOffset  = AddString(name),
             .mType              = ObjectSymbolType::Import,
             .mAddressOffset     = 0,
             .mSectionIndex      = stx::npos32
         });
 
         mHeader.mSymbolCount++;
-        mSymbolNameIndices[pName] = index;
+        mSymbolNameIndices[name] = index;
         return index;
     }
 
@@ -330,48 +333,71 @@ namespace G10::ASM
         return true;
     }
 
-    auto Codegen::EmitLabel (const std::string& pLabel, std::uint32_t pAddress) -> bool
+    auto Codegen::EmitLabel (const std::string& pLabel, std::uint32_t pAddress, bool pWillExport) -> bool
     {
         if (mActiveSectionIndex == stx::npos32)
         {
             mDiag.ReportError("EmitLabel: No active section to emit label to.");
             return false;
         }
+
+        std::string label = pLabel;
+        if (label.starts_with('.'))
+            { label = mLastParentLabel + label; }
+        else if (label.contains('.'))
+        {
+            const auto lastDot = label.find_last_of('.');
+            mLastParentLabel = label.substr(0, lastDot);
+        }
+        else
+            { mLastParentLabel = label; }
         
-        if (const auto findIt = mSymbolNameIndices.find(pLabel); 
+        if (const auto findIt = mSymbolNameIndices.find(label); 
             findIt != mSymbolNameIndices.end())
         {
             const auto symbolIndex = findIt->second;
             if (symbolIndex >= mSymbols.size())
             {
                 mDiag.ReportError("EmitLabel: Symbol '{}' resolves to an index out of bounds.", 
-                    pLabel);
+                    label);
                 return false;
             }
 
             auto& symbol = mSymbols[symbolIndex];
             if (symbol.mSectionIndex != stx::npos32)
             {
-                mDiag.ReportError("EmitLabel: Redefinition of symbol '{}'.", pLabel);
+                mDiag.ReportError("EmitLabel: Redefinition of symbol '{}'.", label);
                 return false;
             }
 
             if (symbol.mType == ObjectSymbolType::Import)
-                { symbol.mType = ObjectSymbolType::Local; }
+            { 
+                symbol.mType = (pWillExport == true) ? 
+                    ObjectSymbolType::Export : 
+                    ObjectSymbolType::Local; 
+            }
 
             symbol.mAddressOffset = pAddress;
             symbol.mSectionIndex = mActiveSectionIndex;
         }
         else
         {
-            mSymbols.emplace_back(ObjectSymbolEntry {
-                .mNameStringOffset = AddString(pLabel),
-                .mType = ObjectSymbolType::Local,
+            auto& symbol = mSymbols.emplace_back(ObjectSymbolEntry {
+                .mNameStringOffset = AddString(label),
+                .mType = (pWillExport == true) ?
+                    ObjectSymbolType::Export : 
+                    ObjectSymbolType::Local,
                 .mAddressOffset = pAddress,
                 .mSectionIndex = mActiveSectionIndex
             });
             
-            mSymbolNameIndices[pLabel] =
+            if (symbol.mType == ObjectSymbolType::Export ||
+                pLabel.contains('.') == false)
+            {
+                mHeader.mSymbolCount++;
+            }
+
+            mSymbolNameIndices[label] =
                 static_cast<std::uint32_t>(mSymbols.size() - 1);
         }
 

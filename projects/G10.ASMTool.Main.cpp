@@ -381,7 +381,12 @@ namespace G10::ASM::Tool
         for (std::size_t i = 0; i < sectionTable.size(); ++i)
         {
             const auto& section = sectionTable[i];
+            auto sectionString = obj.LookupStringByOffset(section.mNameStringOffset);
             std::println(" - Section {}:", i);
+            if (sectionString.has_value())
+            {
+                std::println("   - Name: '{}'", sectionString.value());
+            }
             std::println("   - Name String Offset: 0x{:08X}", section.mNameStringOffset);
             std::print  ("   - Type: ");
             switch (section.mType)
@@ -404,8 +409,13 @@ namespace G10::ASM::Tool
         for (std::size_t i = 0; i < symbolTable.size(); ++i)
         {
             const auto& symbol = symbolTable[i];
+            auto symbolName = obj.LookupStringByOffset(symbol.mNameStringOffset);
             std::println(" - Symbol {}:", i);
             std::println("   - Name String Offset: 0x{:08X}", symbol.mNameStringOffset);
+            if (symbolName.has_value())
+            {
+                std::println("   - Name: '{}'", symbolName.value());
+            }
             std::print  ("   - Type: ");
             switch (symbol.mType)
             {

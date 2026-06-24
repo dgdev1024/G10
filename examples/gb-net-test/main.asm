@@ -1,5 +1,5 @@
 ;
-; @file     main.asm
+; @file     .asm
 ; @brief    Contains the main entry point of our program.
 ;
 
@@ -7,21 +7,6 @@
 
 .include "hardware.inc"
 .include "assets.inc"
-
-; Imports **********************************************************************
-
-.import wRole
-.import wSendByte
-.import wRecvByte
-.import wJoypadState
-.import wJoypadPressed
-.import WaitForVerticalBlank
-.import CopyBytes
-.import SetBytes
-.import SerialHandler
-.import ReadJoypad
-.import UpdateUI
-.import ByteToHex
 
 ; Interrupt Vectors ************************************************************
 
@@ -45,17 +30,17 @@
 ; RAM Variables ****************************************************************
 
 .section "RAM Variables", bss[mWRAM]
-    wRole:              .byte 1
-    wSendByte:          .byte 1
-    wRecvByte:          .byte 1
-    wJoypadState:       .byte 1
-    wJoypadPressed:     .byte 1
-    wHostPhase:         .byte 1
+    wRole::             .byte 1
+    wSendByte::         .byte 1
+    wRecvByte::         .byte 1
+    wJoypadState::      .byte 1
+    wJoypadPressed::    .byte 1
+    wHostPhase::        .byte 1
 
 ; Main Program *****************************************************************
 
 .section "Main Program", code
-    Main:
+    Main::
 
         ; Audio Off
         ld l0, 0
@@ -100,25 +85,25 @@
         stp [rIE0], l0
         ei
 
-    Main.loop:
+    .loop:
         call ReadJoypad
         ld l0, [wJoypadPressed]
         bit 2, l0
-        jpb zs, Main.checkA
+        jpb zs, .checkA
         ld l0, [wRole]
         xor l0, 1
         st [wRole], l0
 
-    Main.checkA:
+    .checkA:
         ld l0, [wRole]
         and l0, l0
-        jpb zs, Main.clientLogic
+        jpb zs, .clientLogic
 
-    Main.hostLogic:
+    .hostLogic:
         ; Check 'A' button (Bit 0) to initiate transfer
         ld l0, [wJoypadPressed]
         bit 0, l0
-        jpb zs, Main.endLogic
+        jpb zs, .endLogic
         
         ; Master: Increment byte, load SB, set Internal Clock ($81)
         ld l0, [wSendByte]
@@ -129,29 +114,19 @@
         st [wHostPhase], l0
         ld l0, $81
         stp [rSC], l0
-        jpb Main.endLogic    
+        jpb .endLogic    
 
-    Main.clientLogic:
+    .clientLogic:
         ldp l0, [rSC]
         bit 7, l0
-        jpb zc, Main.endLogic
+        jpb zc, .endLogic
         ld l0, [wSendByte]
         stp [rSB], l0
         ld l0, $80
         stp [rSC], l0
 
-    Main.endLogic:
+    .endLogic:
         call UpdateUI
         halt
         nop
-        jpb Main.loop
-
-; Exports **********************************************************************
-
-.export wRole
-.export wSendByte
-.export wRecvByte
-.export wJoypadState
-.export wJoypadPressed
-.export wHostPhase
-.export Main
+        jpb .loop

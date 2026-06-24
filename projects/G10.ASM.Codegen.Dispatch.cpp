@@ -716,7 +716,7 @@ namespace G10::ASM
         }
 
         auto& ctx = mSections[mActiveSectionIndex];
-        return EmitLabel(pNode.mLabelExpr.mSymbol, ctx.mLocationCounter);
+        return EmitLabel(pNode.mLabelExpr.mSymbol, ctx.mLocationCounter, pNode.mWillExport);
     }
 
     auto Codegen::DispatchInstructionStatement (const InstructionStatementNode& pNode) -> bool

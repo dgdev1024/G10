@@ -301,7 +301,7 @@ namespace G10::ASM
         auto EmitByte (std::uint8_t pByte) -> bool;
         auto EmitWord (std::uint16_t pWord) -> bool;
         auto EmitDoubleWord (std::uint32_t pDoubleWord) -> bool;
-        auto EmitLabel (const std::string& pLabel, std::uint32_t pAddress) -> bool;
+        auto EmitLabel (const std::string& pLabel, std::uint32_t pAddress, bool pWillExport = false) -> bool;
         auto EmitString (const std::string& pString, bool pUseCharmap = false, bool pNoTerminator = false) -> bool;
         auto EmitOpcode (std::uint16_t pOpcode) -> bool;
         auto EmitOpcode (std::uint8_t pOpcode, std::uint8_t pParamX, std::uint8_t pParamY) -> bool;
@@ -334,6 +334,7 @@ namespace G10::ASM
         std::vector<ObjectRelocationEntry>              mRelocations {};
         std::unordered_map<std::string, std::uint32_t>  mSymbolNameIndices {};
         std::vector<std::uint8_t>                       mOutput {};
+        std::string                                     mLastParentLabel { "" };
         
     };
 }

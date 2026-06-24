@@ -1,5 +1,3 @@
-.import counter_loop
-.export main
 
 .charmap "Hello", 0x92
 .charmap ", ", 0x03
@@ -10,7 +8,7 @@
     test: .string "Hello, World!"
 
 .section "main program", code
-    main:
+    main::
         ld l0, $00
         call counter_loop
         stop

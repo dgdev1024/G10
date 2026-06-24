@@ -1,6 +1,4 @@
 .include "constants.inc"
-.import counter
-.export counter_loop
 
 .section "print msg", rodata
     msg: .asciz "Hello, World!"
@@ -25,7 +23,7 @@
         ret
 
 .section "loop logic", code
-    counter_loop:
+    counter_loop::
         ld l0, [counter]
         inc l0
         st [counter], l0

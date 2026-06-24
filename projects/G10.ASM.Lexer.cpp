@@ -581,31 +581,31 @@ namespace G10::ASM
         
         if (leadingCount == 1)
         {
-            std::uint8_t
-                highByte = 0x00, lowByte = 0x00,
-                highBit = 0b00, lowBit = 0b00;
+            // 2BPP
+            std::uint8_t bytes[2] = { 0x00, 0x00 },
+                         bits[2] = { 0b00, 0b00 };
             for (std::uint8_t i = 0; i < 8; ++i)
             {
                 std::uint8_t bit = 7 - i;
                 switch (lexeme[i + leadingCount])
                 {
-                    case '0': highBit = 0; lowBit = 0; break;
-                    case '1': highBit = 0; lowBit = 1; break;
-                    case '2': highBit = 1; lowBit = 0; break;
-                    case '3': highBit = 1; lowBit = 1; break;
+                    case '0': bits[1] = 0; bits[0] = 0; break;
+                    case '1': bits[1] = 0; bits[0] = 1; break;
+                    case '2': bits[1] = 1; bits[0] = 0; break;
+                    case '3': bits[1] = 1; bits[0] = 1; break;
                     default:
                         mDiag.ReportError(mLocation,
                             "Malformed 2BPP pixel literal.");
                         return std::nullopt;
                 }
 
-                lowByte  |= (lowBit  << bit);
-                highByte |= (highBit << bit);
+                bytes[0] |= (bits[0] << bit);
+                bytes[1] |= (bits[1] << bit);
             }
 
             std::uint64_t integer = 
-                (static_cast<std::uint64_t>(highByte) << 8) |
-                static_cast<std::uint64_t>(lowByte);
+                (static_cast<std::uint64_t>(bytes[1]) << 8) |
+                static_cast<std::uint64_t>(bytes[0]);
             return Token { TokenType::PixelLiteral, integer, mLocation };
         }
         else

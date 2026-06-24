@@ -76,7 +76,10 @@ namespace G10::ASM
         if (const auto l = stx::to<LabelExpressionNode>(pNode))
         {
             // Find the symbol's index. Ensure the index is in range.
-            const auto& name = l->mSymbol;
+            std::string name = l->mSymbol;
+            if (name.starts_with('.'))
+                { name = mLastParentLabel + name; }
+
             const auto findIt = mSymbolNameIndices.find(name);
             if (findIt == mSymbolNameIndices.end())
             {
