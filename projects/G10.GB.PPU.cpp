@@ -174,7 +174,7 @@ namespace G10::GB
 
 namespace G10::GB
 {
-    auto PPU::ReadVideoRAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut) -> bool
+    auto PPU::ReadVideoRAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut, int pSelectBank) -> bool
     {
         bool restricted = 
             mSystem.mNoRestrict == false &&
@@ -183,7 +183,17 @@ namespace G10::GB
                 mVramReadBlocked == true
             );
         if (restricted == false)
-            { pDataOut = mVideoRAM[pRelAddress & 0x1FFF]; }
+        { 
+            if (pSelectBank >= 0)
+            {
+                if (pSelectBank & 0b1)
+                    { pDataOut = mVideoRAM1[pRelAddress & 0x1FFF]; }
+                else
+                    { pDataOut = mVideoRAM0[pRelAddress & 0x1FFF]; }
+            }
+            else
+                { pDataOut = mVideoRAM[pRelAddress & 0x1FFF]; }
+        }
         else
             { pDataOut = 0xFF; }
 
@@ -242,7 +252,7 @@ namespace G10::GB
         return true;
     }
 
-    auto PPU::WriteVideoRAM (std::uint32_t pRelAddress, std::uint8_t pDataIn) -> bool
+    auto PPU::WriteVideoRAM (std::uint32_t pRelAddress, std::uint8_t pDataIn, int pSelectBank) -> bool
     {
         bool restricted = 
             mSystem.mNoRestrict == false &&
@@ -252,7 +262,15 @@ namespace G10::GB
             );
         if (restricted == false)
         { 
-            mVideoRAM[pRelAddress & 0x1FFF] = pDataIn; 
+            if (pSelectBank >= 0)
+            {
+                if (pSelectBank & 0b1)
+                    { mVideoRAM1[pRelAddress & 0x1FFF] = pDataIn; }
+                else
+                    { mVideoRAM0[pRelAddress & 0x1FFF] = pDataIn; }
+            }
+            else
+                { mVideoRAM[pRelAddress & 0x1FFF] = pDataIn; }
         }
 
         return true;

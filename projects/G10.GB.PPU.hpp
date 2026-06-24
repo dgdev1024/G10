@@ -216,11 +216,11 @@ namespace G10::GB
 
     public: // Methods - Bus Access ********************************************
 
-        auto ReadVideoRAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut) -> bool;
+        auto ReadVideoRAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut, int pSelectBank = -1) -> bool;
         auto ReadOAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut) -> bool;
         auto ReadColorRAM (std::uint32_t pRelAddress, std::uint8_t& pDataOut) -> bool;
 
-        auto WriteVideoRAM (std::uint32_t pRelAddress, std::uint8_t pDataIn) -> bool;
+        auto WriteVideoRAM (std::uint32_t pRelAddress, std::uint8_t pDataIn, int pSelectBank = -1) -> bool;
         auto WriteOAM (std::uint32_t pRelAddress, std::uint8_t pDataIn) -> bool;
         auto WriteColorRAM (std::uint32_t pRelAddress, std::uint8_t pDataIn) -> bool;
 

@@ -10,15 +10,20 @@
 
 ; Memory Map *******************************************************************
 
-.const mPRGROM  = $00000000
-.const mVRAM    = $80008000
-.const mOAM     = $8000FE00
-.const mWAVRAM  = $8000FF30
-.const mWRAM    = $A0000000
-.const mSRAM    = $B0000000
-.const mXPRAM   = $C0000000
-.const mQRAM    = $FFFF0000
-.const mIO      = $FFFFFF00
+.const mPRGROM      = $00002000
+.const mVRAM0       = $80004000
+.const mVRAM1       = $80006000
+.const mVRAM        = $80008000
+.const mCPRAM       = $8000A000
+.const mBGCPRAM     = $8000A000
+.const mOBJCPRAM    = $8000A040
+.const mOAM         = $8000FE00
+.const mWAVRAM      = $8000FF30
+.const mWRAM        = $A0000000
+.const mSRAM        = $B0000000
+.const mXPRAM       = $C0000000
+.const mQRAM        = $FFFF0000
+.const mIO          = $FFFFFF00
 
 ; Port Registers - G10 CPU Interrupt Registers *********************************
 
@@ -596,6 +601,9 @@
 .const TILE_WIDTH               = 8
 .const TILE_HEIGHT              = 8
 .const TILE_SIZE                = 16
+.const COLOR_RAM_SIZE           = 0x80
+.const BG_COLOR_RAM_SIZE        = 0x40
+.const OBJ_COLOR_RAM_SIZE       = 0x40
 .const COLOR_SIZE               = 2
 .const PAL_COLORS               = 4
 .const PAL_SIZE                 = PAL_COLORS * COLOR_SIZE

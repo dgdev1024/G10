@@ -75,6 +75,24 @@ namespace G10::GB
             if (mPPU.ReadVideoRAM(pAddress - kMemVideoRamStartAddr, pDataOut) == false)
                 { pDataOut = 0xFF; }
         }
+        else if (pAddress >= kMemVideoRamB0StartAddr && 
+                 pAddress <= kMemVideoRamB0EndAddr)
+        {
+            if (mPPU.ReadVideoRAM(pAddress - kMemVideoRamB0StartAddr, pDataOut, 0) == false)
+                { pDataOut = 0xFF; }
+        }
+        else if (pAddress >= kMemVideoRamB1StartAddr && 
+                 pAddress <= kMemVideoRamB1EndAddr)
+        {
+            if (mPPU.ReadVideoRAM(pAddress - kMemVideoRamB1StartAddr, pDataOut, 1) == false)
+                { pDataOut = 0xFF; }
+        }
+        else if (pAddress >= kMemColorRamStartAddr && 
+                 pAddress <= kMemColorRamEndAddr)
+        {
+            if (mPPU.ReadColorRAM(pAddress - kMemColorRamStartAddr, pDataOut) == false)
+                { pDataOut = 0xFF; }
+        }
         else if (pAddress >= kMemOamStartAddr &&
                  pAddress <= kMemOamEndAddr)
         {
@@ -189,6 +207,21 @@ namespace G10::GB
             pAddress <= kMemVideoRamEndAddr)
         {
             mPPU.WriteVideoRAM(pAddress - kMemVideoRamStartAddr, pDataIn);
+        }
+        else if (pAddress >= kMemVideoRamB0StartAddr && 
+                 pAddress <= kMemVideoRamB0EndAddr)
+        {
+            mPPU.WriteVideoRAM(pAddress - kMemVideoRamB0StartAddr, pDataIn, 0);
+        }
+        else if (pAddress >= kMemVideoRamB1StartAddr && 
+                 pAddress <= kMemVideoRamB1EndAddr)
+        {
+            mPPU.WriteVideoRAM(pAddress - kMemVideoRamB1StartAddr, pDataIn, 1);
+        }
+        else if (pAddress >= kMemColorRamStartAddr && 
+                 pAddress <= kMemColorRamEndAddr)
+        {
+            mPPU.WriteColorRAM(pAddress - kMemColorRamStartAddr, pDataIn);
         }
         else if (pAddress >= kMemOamStartAddr &&
                  pAddress <= kMemOamEndAddr)
