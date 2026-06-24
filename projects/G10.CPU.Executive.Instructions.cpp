@@ -77,7 +77,7 @@ namespace G10::CPU
                         halfCarry = pCore.mFlagsRegister.mHalfCarry,
                         carry = pCore.mFlagsRegister.mCarry;
 
-        pCore.ReadRegisterLB(0, byteAcc);
+        pCore.ReadRegisterLB(pInst.mParamX, byteAcc);
         if (halfCarry == true || (subtract == false && (byteAcc & 0xF) > 0x9))
             { byteAccAdjust |= 0x6; }
         if (carry == true || (subtract == false && byteAcc > 0x99))
@@ -90,7 +90,7 @@ namespace G10::CPU
             (byteAcc + byteAccAdjust);
 
         return
-            pCore.WriteRegisterLB(0, byteAccResult) &&
+            pCore.WriteRegisterLB(pInst.mParamX, byteAccResult) &&
             pCore.WriteFlag(Flag::Zero, (byteAccResult == 0x00)) &&
             pCore.WriteFlag(Flag::HalfCarry, false) &&
             pCore.WriteFlag(Flag::Carry, carry);
@@ -194,10 +194,10 @@ namespace G10::CPU
 
     auto Executive::ExecuteLDP_LX_pLY (Core& pCore, const Instruction& pInst) -> bool
     {
-        std::uint16_t address = 0;
+        std::uint8_t address = 0;
         std::uint8_t mem = 0;
         return
-            pCore.ReadRegisterW(pInst.mParamY, address) &&
+            pCore.ReadRegisterLB(pInst.mParamY, address) &&
             pCore.ReadMemoryB(kMemQuickRamStartAddr + address, mem) &&
             pCore.WriteRegisterLB(pInst.mParamX, mem);
     }
@@ -675,158 +675,158 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, fr);
     }
 
-    auto Executive::ExecuteADD_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         bool good = 
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformADD8(pCore, false, acc, imm, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
 
         return good;
     }
 
-    auto Executive::ExecuteADD_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformADD8(pCore, false, acc, ly, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADD_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformADD8(pCore, false, acc, mem, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADC_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADC_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformADD8(pCore, true, acc, imm, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADC_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADC_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformADD8(pCore, true, acc, ly, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADC_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADC_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformADD8(pCore, true, acc, mem, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, false, acc, imm, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, false, acc, ly, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformSUB8(pCore, false, acc, mem, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSBC_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSBC_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, true, acc, imm, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSBC_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSBC_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, true, acc, ly, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSBC_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSBC_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformSUB8(pCore, true, acc, mem, &res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteINC_LX (Core& pCore, const Instruction& pInst) -> bool
@@ -873,100 +873,100 @@ namespace G10::CPU
             pCore.WriteMemoryB(addr, res);
     }
 
-    auto Executive::ExecuteADD_W0_IMM16 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_WX_IMM16 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint16_t acc = 0;
         std::uint16_t imm = 0;
         std::uint16_t res = 0;
         return
             pCore.FetchMemoryW(imm) &&
-            pCore.ReadRegisterW(0, acc) &&
+            pCore.ReadRegisterW(pInst.mParamX, acc) &&
             PerformADD16(pCore, acc, imm, res) &&
-            pCore.WriteRegisterW(0, res);
+            pCore.WriteRegisterW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADD_W0_WY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_WX_WY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint16_t acc = 0;
         std::uint16_t ly = 0;
         std::uint16_t res = 0;
         return
             pCore.ReadRegisterW(pInst.mParamY, ly) &&
-            pCore.ReadRegisterW(0, acc) &&
+            pCore.ReadRegisterW(pInst.mParamX, acc) &&
             PerformADD16(pCore, acc, ly, res) &&
-            pCore.WriteRegisterW(0, res);
+            pCore.WriteRegisterW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADD_D0_IMM32 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_DX_IMM32 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t acc = 0;
         std::uint32_t imm = 0;
         std::uint32_t res = 0;
         return
             pCore.FetchMemoryDW(imm) &&
-            pCore.ReadRegisterDW(0, acc) &&
+            pCore.ReadRegisterDW(pInst.mParamX, acc) &&
             PerformADD32(pCore, acc, imm, res) &&
-            pCore.WriteRegisterDW(0, res);
+            pCore.WriteRegisterDW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteADD_D0_DY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteADD_DX_DY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t acc = 0;
         std::uint32_t ly = 0;
         std::uint32_t res = 0;
         return
             pCore.ReadRegisterDW(pInst.mParamY, ly) &&
-            pCore.ReadRegisterDW(0, acc) &&
+            pCore.ReadRegisterDW(pInst.mParamX, acc) &&
             PerformADD32(pCore, acc, ly, res) &&
-            pCore.WriteRegisterDW(0, res);
+            pCore.WriteRegisterDW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_W0_IMM16 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_WX_IMM16 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint16_t acc = 0;
         std::uint16_t imm = 0;
         std::uint16_t res = 0;
         return
             pCore.FetchMemoryW(imm) &&
-            pCore.ReadRegisterW(0, acc) &&
+            pCore.ReadRegisterW(pInst.mParamX, acc) &&
             PerformSUB16(pCore, acc, imm, res) &&
-            pCore.WriteRegisterW(0, res);
+            pCore.WriteRegisterW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_W0_WY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_WX_WY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint16_t acc = 0;
         std::uint16_t ly = 0;
         std::uint16_t res = 0;
         return
             pCore.ReadRegisterW(pInst.mParamY, ly) &&
-            pCore.ReadRegisterW(0, acc) &&
+            pCore.ReadRegisterW(pInst.mParamX, acc) &&
             PerformSUB16(pCore, acc, ly, res) &&
-            pCore.WriteRegisterW(0, res);
+            pCore.WriteRegisterW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_D0_IMM32 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_DX_IMM32 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t acc = 0;
         std::uint32_t imm = 0;
         std::uint32_t res = 0;
         return
             pCore.FetchMemoryDW(imm) &&
-            pCore.ReadRegisterDW(0, acc) &&
+            pCore.ReadRegisterDW(pInst.mParamX, acc) &&
             PerformSUB32(pCore, acc, imm, res) &&
-            pCore.WriteRegisterDW(0, res);
+            pCore.WriteRegisterDW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteSUB_D0_DY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteSUB_DX_DY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t acc = 0;
         std::uint32_t ly = 0;
         std::uint32_t res = 0;
         return
             pCore.ReadRegisterDW(pInst.mParamY, ly) &&
-            pCore.ReadRegisterDW(0, acc) &&
+            pCore.ReadRegisterDW(pInst.mParamX, acc) &&
             PerformSUB32(pCore, acc, ly, res) &&
-            pCore.WriteRegisterDW(0, res);
+            pCore.WriteRegisterDW(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteINC_WX (Core& pCore, const Instruction& pInst) -> bool
@@ -1009,118 +1009,118 @@ namespace G10::CPU
             pCore.WriteRegisterDW(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteAND_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteAND_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformAND8(pCore, acc, imm, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteAND_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteAND_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformAND8(pCore, acc, ly, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteAND_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteAND_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformAND8(pCore, acc, mem, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteOR_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteOR_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformOR8(pCore, acc, imm, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteOR_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteOR_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformOR8(pCore, acc, ly, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteOR_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteOR_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformOR8(pCore, acc, mem, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteXOR_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteXOR_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         std::uint8_t res = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformXOR8(pCore, acc, imm, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteXOR_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteXOR_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         std::uint8_t res = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformXOR8(pCore, acc, ly, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
-    auto Executive::ExecuteXOR_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteXOR_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         std::uint8_t res = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformXOR8(pCore, acc, mem, res) &&
-            pCore.WriteRegisterLB(0, res);
+            pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteNOT_LX (Core& pCore, const Instruction& pInst) -> bool
@@ -1145,33 +1145,33 @@ namespace G10::CPU
             pCore.WriteMemoryB(addr, res);
     }
 
-    auto Executive::ExecuteCMP_L0_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteCMP_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t imm = 0;
         return
             pCore.FetchMemoryB(imm) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, false, acc, imm, nullptr);
     }
 
-    auto Executive::ExecuteCMP_L0_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteCMP_LX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t acc = 0;
         std::uint8_t ly = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             PerformSUB8(pCore, false, acc, ly, nullptr);
     }
 
-    auto Executive::ExecuteCMP_L0_pDY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteCMP_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
         std::uint8_t acc = 0;
         std::uint8_t mem = 0;
         return
-            pCore.ReadRegisterLB(0, acc) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             PerformSUB8(pCore, false, acc, mem, nullptr);
@@ -1185,6 +1185,16 @@ namespace G10::CPU
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
             PerformSHL8(pCore, lx, res) &&
             pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteSLA_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformSHL8(pCore, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteSLA_pDX (Core& pCore, const Instruction& pInst) -> bool
@@ -1209,6 +1219,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteSRA_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformSHR8(pCore, false, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteSRA_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1231,6 +1251,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteSRL_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformSHR8(pCore, true, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteSRL_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1251,6 +1281,16 @@ namespace G10::CPU
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
             PerformSWAP8(pCore, lx, res) &&
             pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteSWAP_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformSWAP8(pCore, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteSWAP_pDX (Core& pCore, const Instruction& pInst) -> bool
@@ -1305,6 +1345,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteRL_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformROL8(pCore, true, false, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteRL_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1335,6 +1385,16 @@ namespace G10::CPU
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
             PerformROL8(pCore, false, false, lx, res) &&
             pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteRLC_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformROL8(pCore, false, false, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteRLC_pDX (Core& pCore, const Instruction& pInst) -> bool
@@ -1369,6 +1429,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteRR_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformROR8(pCore, true, false, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteRR_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1401,6 +1471,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteRRC_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformROR8(pCore, false, false, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteRRC_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1418,6 +1498,14 @@ namespace G10::CPU
         std::uint8_t lx = 0;
         return
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
+            PerformBIT8(pCore, lx, pInst.mParamY);
+    }
+
+    auto Executive::ExecuteBIT_Y_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
             PerformBIT8(pCore, lx, pInst.mParamY);
     }
 
@@ -1439,6 +1527,16 @@ namespace G10::CPU
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
             PerformSET8(pCore, lx, pInst.mParamY, res) &&
             pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteSET_Y_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformSET8(pCore, lx, pInst.mParamY, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteSET_Y_pDX (Core& pCore, const Instruction& pInst) -> bool
@@ -1463,6 +1561,16 @@ namespace G10::CPU
             pCore.WriteRegisterLB(pInst.mParamX, res);
     }
 
+    auto Executive::ExecuteRES_Y_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformRES8(pCore, lx, pInst.mParamY, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
     auto Executive::ExecuteRES_Y_pDX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1483,6 +1591,16 @@ namespace G10::CPU
             pCore.ReadRegisterLB(pInst.mParamX, lx) &&
             PerformTOG8(pCore, lx, pInst.mParamY, res) &&
             pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteTOG_Y_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformTOG8(pCore, lx, pInst.mParamY, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
     }
 
     auto Executive::ExecuteTOG_Y_pDX (Core& pCore, const Instruction& pInst) -> bool
@@ -1510,6 +1628,19 @@ namespace G10::CPU
         return good;
     }
 
+    auto Executive::ExecuteLDI_HX_pDY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t addr = 0;
+        std::uint8_t mem = 0;
+        bool good =
+            pCore.ReadRegisterDW(pInst.mParamY, addr) &&
+            pCore.ReadMemoryB(addr, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem) &&
+            pCore.WriteRegisterDW(pInst.mParamY, addr + 1);
+            
+        return good;
+    }
+
     auto Executive::ExecuteLDD_LX_pDY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1518,6 +1649,17 @@ namespace G10::CPU
             pCore.ReadRegisterDW(pInst.mParamY, addr) &&
             pCore.ReadMemoryB(addr, mem) &&
             pCore.WriteRegisterLB(pInst.mParamX, mem) &&
+            pCore.WriteRegisterDW(pInst.mParamY, addr - 1);
+    }
+
+    auto Executive::ExecuteLDD_HX_pDY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t addr = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterDW(pInst.mParamY, addr) &&
+            pCore.ReadMemoryB(addr, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem) &&
             pCore.WriteRegisterDW(pInst.mParamY, addr - 1);
     }
 
@@ -1532,6 +1674,17 @@ namespace G10::CPU
             pCore.WriteRegisterDW(pInst.mParamX, addr + 1);
     }
 
+    auto Executive::ExecuteSTI_pDX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t addr = 0;
+        std::uint8_t hy = 0;
+        return
+            pCore.ReadRegisterDW(pInst.mParamX, addr) &&
+            pCore.ReadRegisterHB(pInst.mParamY, hy) &&
+            pCore.WriteMemoryB(addr, hy) &&
+            pCore.WriteRegisterDW(pInst.mParamX, addr + 1);
+    }
+
     auto Executive::ExecuteSTD_pDX_LY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint32_t addr = 0;
@@ -1540,6 +1693,17 @@ namespace G10::CPU
             pCore.ReadRegisterDW(pInst.mParamX, addr) &&
             pCore.ReadRegisterLB(pInst.mParamY, ly) &&
             pCore.WriteMemoryB(addr, ly) &&
+            pCore.WriteRegisterDW(pInst.mParamX, addr - 1);
+    }
+
+    auto Executive::ExecuteSTD_pDX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t addr = 0;
+        std::uint8_t hy = 0;
+        return
+            pCore.ReadRegisterDW(pInst.mParamX, addr) &&
+            pCore.ReadRegisterHB(pInst.mParamY, hy) &&
+            pCore.WriteMemoryB(addr, hy) &&
             pCore.WriteRegisterDW(pInst.mParamX, addr - 1);
     }
 
@@ -1627,4 +1791,265 @@ namespace G10::CPU
             PerformADD32(pCore, sp, dx, res) &&
             pCore.WriteRegisterDW(pInst.mParamX, res);
     }
+
+    auto Executive::ExecuteLD_HX_IMM8 (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryB(mem) && 
+            pCore.WriteRegisterHB(pInst.mParamX, mem);       
+    }
+
+    auto Executive::ExecuteLD_HX_pIMM32 (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryDW(address) &&
+            pCore.ReadMemoryB(address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);        
+    }
+
+    auto Executive::ExecuteLD_HX_pDY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterDW(pInst.mParamY, address) &&
+            pCore.ReadMemoryB(address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);
+    }
+
+    auto Executive::ExecuteLDQ_HX_pIMM16 (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint16_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryW(address) &&
+            pCore.ReadMemoryB(kMemQuickRamStartAddr + address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);
+    }
+
+    auto Executive::ExecuteLDQ_HX_pWY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint16_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterW(pInst.mParamY, address) &&
+            pCore.ReadMemoryB(kMemQuickRamStartAddr + address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);
+    }
+
+    auto Executive::ExecuteLDP_HX_pIMM8 (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryB(address) &&
+            pCore.ReadMemoryB(kMemPortStartAddr + address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);
+    }
+
+    auto Executive::ExecuteLDP_HX_pLY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterLB(pInst.mParamY, address) &&
+            pCore.ReadMemoryB(kMemQuickRamStartAddr + address, mem) &&
+            pCore.WriteRegisterHB(pInst.mParamX, mem);
+    }
+
+    auto Executive::ExecuteST_pIMM32_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryDW(address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(address, mem);
+    }
+
+    auto Executive::ExecuteST_pDX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint32_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterDW(pInst.mParamX, address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(address, mem);
+    }
+
+    auto Executive::ExecuteSTQ_pIMM16_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint16_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryW(address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(kMemQuickRamStartAddr + address, mem);
+    }
+
+    auto Executive::ExecuteSTQ_pWX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint16_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterW(pInst.mParamX, address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(kMemQuickRamStartAddr + address, mem);
+    }
+
+    auto Executive::ExecuteSTP_pIMM8_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.FetchMemoryB(address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(kMemPortStartAddr + address, mem);
+    }
+
+    auto Executive::ExecuteSTP_pLX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t address = 0;
+        std::uint8_t mem = 0;
+        return
+            pCore.ReadRegisterLB(pInst.mParamX, address) &&
+            pCore.ReadRegisterHB(pInst.mParamY, mem) &&
+            pCore.WriteMemoryB(kMemPortStartAddr + address, mem);
+    }
+
+    auto Executive::ExecuteMV_HX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t val = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, val) &&
+            pCore.WriteRegisterHB(pInst.mParamX, val);
+    }
+
+    auto Executive::ExecuteADD_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformADD8(pCore, false, acc, ly, res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);        
+    }
+
+    auto Executive::ExecuteADC_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformADD8(pCore, true, acc, ly, res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);        
+    }
+
+    auto Executive::ExecuteSUB_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformSUB8(pCore, false, acc, ly, &res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteSBC_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformSUB8(pCore, true, acc, ly, &res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteINC_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformINC8(pCore, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteDEC_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformDEC8(pCore, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteAND_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformAND8(pCore, acc, ly, res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteOR_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformOR8(pCore, acc, ly, res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteXOR_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformXOR8(pCore, acc, ly, res) &&
+            pCore.WriteRegisterLB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteNOT_HX (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t lx = 0;
+        std::uint8_t res = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamX, lx) &&
+            PerformNOT8(pCore, lx, res) &&
+            pCore.WriteRegisterHB(pInst.mParamX, res);
+    }
+
+    auto Executive::ExecuteCMP_LX_HY (Core& pCore, const Instruction& pInst) -> bool
+    {
+        std::uint8_t acc = 0;
+        std::uint8_t ly = 0;
+        return
+            pCore.ReadRegisterHB(pInst.mParamY, ly) &&
+            pCore.ReadRegisterLB(pInst.mParamX, acc) &&
+            PerformSUB8(pCore, false, acc, ly, nullptr);
+    }
+    
 }

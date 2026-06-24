@@ -68,7 +68,42 @@ namespace G10::ASM
     {
         // `0x0600 DAA`
         // - Decimal-adjusts the low byte accumulator register.
-        return EmitOpcode(0x0600);
+        // - 1 operand.
+        if (pNode.mOperands.empty())
+        {
+            return EmitOpcode(0x0600);
+        }
+        else if (pNode.mOperands.size() != 1)
+        {
+            mDiag.ReportError(pNode.mLocation, "'.DAA' Instruction: "
+                "Expected one operand.");
+            return false;
+        }
+
+        // Operand 1:
+        // - Low Byte Register
+        const auto& op1 = pNode.mOperands[0];
+        if (const auto& reg1 = EvaluateRegisterExpression(op1))
+        {
+            const auto regUnder1 = stx::under(reg1->second);
+            const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
+            const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
+
+            if (regClass1 != CPU::RegisterAccess::LowByte)
+            {
+                mDiag.ReportError(pNode.mLocation, "'.DAA' Instruction: "
+                    "Expected low byte register.");
+                return false;
+            }
+
+            return EmitOpcode(0x06, regIndex1, 0);
+        }
+        else
+        {
+            mDiag.ReportError(pNode.mLocation, "'.DAA' Instruction: "
+                "Expected register expression.");
+            return false;
+        }
     }
 
     auto Codegen::DispatchSCF (const InstructionStatementNode& pNode,
@@ -174,6 +209,9 @@ namespace G10::ASM
         // `0x30X0 LD DX, IMM32`
         // `0x31X0 LD DX, [IMM32]`
         // `0x32XY LD DX, [DY]`
+        // `0xC0X0 LD HX, IMM8`
+        // `0xC1X0 LD HX, [IMM32]`
+        // `0xC2XY LD HX, [DY]`
         // - Loads Immediate or Memory Value into Register
         // - 2 Operands
         // - Can also act as an alias for the `MV` and `ST` instructions.
@@ -208,6 +246,7 @@ namespace G10::ASM
             switch (regClass1)
             {
                 case CPU::RegisterAccess::LowByte:      base = 0x10; break;
+                case CPU::RegisterAccess::HighByte:     base = 0xC0; break;
                 case CPU::RegisterAccess::Word:         base = 0x20; break;
                 case CPU::RegisterAccess::DoubleWord:   base = 0x30; break;
                 default:
@@ -241,6 +280,7 @@ namespace G10::ASM
             EmitOpcode(base, param1, param2);
             switch (destRegClass)
             {
+                case CPU::RegisterAccess::HighByte:
                 case CPU::RegisterAccess::LowByte:      return EmitByte(*bin2 & 0xFF);
                 case CPU::RegisterAccess::Word:         return EmitWord(*bin2 & 0xFFFF);
                 case CPU::RegisterAccess::DoubleWord:   return EmitDoubleWord(*bin2);
@@ -251,6 +291,7 @@ namespace G10::ASM
             EmitOpcode(base, param1, param2);
             switch (destRegClass)
             {
+                case CPU::RegisterAccess::HighByte:
                 case CPU::RegisterAccess::LowByte:
                     return AddRelocation(lbl2->mSymbol, ObjectRelocationType::Absolute, 1);
                 case CPU::RegisterAccess::Word:
@@ -264,6 +305,7 @@ namespace G10::ASM
             EmitOpcode(base, param1, param2);
             switch (destRegClass)
             {
+                case CPU::RegisterAccess::HighByte:
                 case CPU::RegisterAccess::LowByte:      return EmitByte(*int2 & 0xFF);
                 case CPU::RegisterAccess::Word:         return EmitWord(*int2 & 0xFFFF);
                 case CPU::RegisterAccess::DoubleWord:   return EmitDoubleWord(*int2);
@@ -312,6 +354,8 @@ namespace G10::ASM
         // `0x24XY LDQ WX, [WY]`
         // `0x33X0 LDQ DX, [IMM16]`
         // `0x34XY LDQ DX, [WY]`
+        // `0xC3X0 LDQ HX, [IMM16]`
+        // `0xC4XY LDQ HX, [WY]`
         // - Load value from 16-bit relative address.
         // - Address is relative to absolute address `$FFFF0000`.
         // - 2 operands.
@@ -341,6 +385,7 @@ namespace G10::ASM
             switch (destRegClass)
             {
                 case CPU::RegisterAccess::LowByte:      base = 0x13; break;
+                case CPU::RegisterAccess::HighByte:     base = 0xC3; break;
                 case CPU::RegisterAccess::Word:         base = 0x23; break;
                 case CPU::RegisterAccess::DoubleWord:   base = 0x33; break;
                 default:
@@ -407,6 +452,8 @@ namespace G10::ASM
     {
         // `0x15X0 LDP LX, [IMM8]`
         // `0x16XY LDP LX, [LY]`
+        // `0xC5X0 LDP HX, [IMM8]`
+        // `0xC6X0 LDP HX, [LY]`
         // - Load value from relative 8-bit address.
         // - Address is relative to absolute address `$FFFFFF00`.
         // - 2 operands.
@@ -436,6 +483,7 @@ namespace G10::ASM
             switch (destRegClass)
             {
                 case CPU::RegisterAccess::LowByte:      base = 0x15; break;
+                case CPU::RegisterAccess::HighByte:     base = 0xC5; break;
                 default:
                     mDiag.ReportError(pNode.mLocation, "'.LDP' Instruction: "
                         "Invalid register class for destination operand.");
@@ -504,7 +552,9 @@ namespace G10::ASM
         // `0x28XY ST [DX], WY`
         // `0x370Y ST [IMM32], DY`
         // `0x380Y ST [DX], DY`
-        // `0xB5X0 ST [DX], IMM8`
+        // `0xB9X0 ST [DX], IMM8`
+        // `0xC70Y ST [IMM32], HY`
+        // `0xC8XY ST [DX], HY`
         // - Stores value in memory at pointed address
         // - 2 operands
         if (pNode.mOperands.size() != 2)
@@ -538,6 +588,7 @@ namespace G10::ASM
             switch (regClass2)
             {
                 case CPU::RegisterAccess::LowByte:      base = 0x17; break;
+                case CPU::RegisterAccess::HighByte:     base = 0xC7; break;
                 case CPU::RegisterAccess::Word:         base = 0x27; break;
                 case CPU::RegisterAccess::DoubleWord:   base = 0x37; break;
                 default:
@@ -548,17 +599,17 @@ namespace G10::ASM
         }
         else if (const auto bin2 = EvaluateBinaryExpression(op2))
         {
-            base = 0xB5;
+            base = 0xB9;
             srcMaybeByte = (*bin2 & 0xFF);
         }
         else if (const auto lbl2 = stx::to<LabelExpressionNode>(op2))
         {
-            base = 0xB5;
+            base = 0xB9;
             srcMaybeLabel = lbl2->mSymbol;
         }
         else if (const auto int2 = EvaluateIntegerExpression(op2))
         {
-            base = 0xB5;
+            base = 0xB9;
             srcMaybeByte = (*int2 & 0xFF);
         }
         else
@@ -574,7 +625,7 @@ namespace G10::ASM
         {
             if (const auto int1 = std::get_if<std::uint32_t>(&ptr1.value()))
             {
-                if (base == 0xB5)
+                if (base == 0xB9)
                 {
                     mDiag.ReportError(pNode.mLocation, "'.ST' Instruction: "
                         "Invalid operand 1");
@@ -587,7 +638,7 @@ namespace G10::ASM
             }
             else if (const auto lbl1 = std::get_if<std::string>(&ptr1.value()))
             {
-                if (base == 0xB5)
+                if (base == 0xB9)
                 {
                     mDiag.ReportError(pNode.mLocation, "'.ST' Instruction: "
                         "Invalid operand 1");
@@ -648,6 +699,8 @@ namespace G10::ASM
         // `0x2AXY STQ [WX], WY`
         // `0x390Y STQ [IMM16], DY`
         // `0x3AXY STQ [WX], DY`
+        // `0xC90Y STQ [IMM16], HY`
+        // `0xCAXY STQ [WX], HY`
         // - Stores a value from a register to memory at relative 16-bit address.
         // - Address is relative to absolute address `$FFFF0000`.
         // - 2 operands.
@@ -679,6 +732,7 @@ namespace G10::ASM
             switch (regClass2)
             {
                 case CPU::RegisterAccess::LowByte:      base = 0x19; break;
+                case CPU::RegisterAccess::HighByte:     base = 0xC9; break;
                 case CPU::RegisterAccess::Word:         base = 0x29; break;
                 case CPU::RegisterAccess::DoubleWord:   base = 0x39; break;
                 default:
@@ -741,6 +795,8 @@ namespace G10::ASM
     {
         // `0x1B0Y STP [IMM8], LY`
         // `0x1CXY STP [LX], LY`
+        // `0xCB0Y STP [IMM8], HY`
+        // `0xCCXY STP [LX], HY`
         // - Stores a value in memory at a relative 8-bit address.
         // - Address is relative to absolute address `$FFFFFF00`.
         // - 2 operands.
@@ -766,14 +822,17 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 == CPU::RegisterAccess::LowByte)
+                { base = 0x1B; }
+            else if (regClass2 == CPU::RegisterAccess::HighByte)
+                { base = 0xCB; }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.STP' Instruction: "
                     "Invalid register class for operand 2");
                 return false;
             }
 
-            base = 0x1B;
             srcReg = regClass2;
             param2 = regIndex2;
         }
@@ -834,6 +893,7 @@ namespace G10::ASM
         // `0x1FXY MV LX, HY`
         // `0x2DXY MV WX, WY`
         // `0x3DXY MV DX, DY`
+        // `0xCDXY MV HX, HY`
         // - Copies a value from one register to another.
         // - 2 operands
         if (pNode.mOperands.size() != 2)
@@ -889,6 +949,9 @@ namespace G10::ASM
         if (destRegClass == CPU::RegisterAccess::LowByte &&
             srcRegClass == CPU::RegisterAccess::LowByte)
             { base = 0x1D; }
+        else if (destRegClass == CPU::RegisterAccess::HighByte &&
+            srcRegClass == CPU::RegisterAccess::HighByte)
+            { base = 0xCD; }
         else if (destRegClass == CPU::RegisterAccess::HighByte &&
             srcRegClass == CPU::RegisterAccess::LowByte)
             { base = 0x1E; }
@@ -1678,14 +1741,15 @@ namespace G10::ASM
     auto Codegen::DispatchADD (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x5000 ADD L0, IMM8`
-        // `0x510Y ADD L0, LY`
-        // `0x520Y ADD L0, [DY]`
-        // `0x6000 ADD W0, IMM16`
-        // `0x610Y ADD W0, WY`
-        // `0x6200 ADD D0, IMM32`
-        // `0x630Y ADD D0, DY`
-        // - Adds value to accumulator, storing result in accumulator.
+        // `0x5000 ADD LX, IMM8`
+        // `0x510Y ADD LX, LY`
+        // `0x520Y ADD LX, [DY]`
+        // `0x6000 ADD WX, IMM16`
+        // `0x610Y ADD WX, WY`
+        // `0x6200 ADD DX, IMM32`
+        // `0x630Y ADD DX, DY`
+        // `0xD0XY ADD LX, HY`
+        // - Adds value to destination, storing result in destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -1710,10 +1774,10 @@ namespace G10::ASM
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
 
-            if (regIndex1 > 0 || regClass1 == CPU::RegisterAccess::HighByte)
+            if (regClass1 == CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.ADD' Instruction: "
-                    "Expected an accumulator register.");
+                    "Expected a non-high-byte register.");
                 return false;
             }
 
@@ -1724,7 +1788,8 @@ namespace G10::ASM
                 case CPU::RegisterAccess::DoubleWord:   base = 0x62; break;
             }
 
-            destRegClass = regClass1;          
+            destRegClass = regClass1; 
+            param1 = regIndex1;         
         }
         else
         {
@@ -1775,6 +1840,13 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (destRegClass == CPU::RegisterAccess::LowByte && 
+                regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD0, param1, regIndex2);
+            }
+
             if (regClass2 != destRegClass)
             {
                 mDiag.ReportError(pNode.mLocation, "'.ADD' Instruction: "
@@ -1789,7 +1861,7 @@ namespace G10::ASM
             if (destRegClass != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.ADD' Instruction: "
-                    "Expected byte accumulator for pointer expression.");
+                    "Expected low byte register for pointer expression.");
                 return false;
             }
 
@@ -1827,11 +1899,12 @@ namespace G10::ASM
     auto Codegen::DispatchADC (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x5300 ADC L0, IMM8`
-        // `0x540Y ADC L0, LY`
-        // `0x550Y ADC L0, [DY]`
-        // - Adds value and carry flag to accumulator, storing result in
-        //   accumulator.
+        // `0x5300 ADC LX, IMM8`
+        // `0x54XY ADC LX, LY`
+        // `0x55XY ADC LX, [DY]`
+        // `0xD1XY ADC LX, HY`
+        // - Adds value and carry flag to destination, storing result in
+        //   destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -1856,15 +1929,16 @@ namespace G10::ASM
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
 
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.ADC' Instruction: "
-                    "Expected the low byte accumulator register.");
+                    "Expected a low byte register.");
                 return false;
             }
 
             base = 0x53;
-            destRegClass = regClass1;          
+            destRegClass = regClass1;     
+            param1 = regIndex1;     
         }
         else
         {
@@ -1900,6 +1974,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD1, param1, regIndex2);
+            }
+
             if (regClass2 != destRegClass)
             {
                 mDiag.ReportError(pNode.mLocation, "'.ADC' Instruction: "
@@ -1952,14 +2032,15 @@ namespace G10::ASM
     auto Codegen::DispatchSUB (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x5600 SUB L0, IMM8`
-        // `0x570Y SUB L0, LY`
-        // `0x580Y SUB L0, [DY]`
-        // `0x6400 SUB W0, IMM16`
-        // `0x650Y SUB W0, WY`
-        // `0x6600 SUB D0, IMM32`
-        // `0x6700 SUB D0, DY`
-        // - Subtracts value from accumulator, storing result in accumulator.
+        // `0x5600 SUB LX, IMM8`
+        // `0x570Y SUB LX, LY`
+        // `0x580Y SUB LX, [DY]`
+        // `0x6400 SUB WX, IMM16`
+        // `0x650Y SUB WX, WY`
+        // `0x6600 SUB DX, IMM32`
+        // `0x6700 SUB DX, DY`
+        // `0xD2XY SUB LX, HY`
+        // - Subtracts value from destination, storing result in destination.
         // - 2 operands
         if (pNode.mOperands.size() != 2)
         {
@@ -1984,10 +2065,10 @@ namespace G10::ASM
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
 
-            if (regIndex1 > 0 || regClass1 == CPU::RegisterAccess::HighByte)
+            if (regClass1 == CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SUB' Instruction: "
-                    "Expected an accumulator register.");
+                    "Expected a non-high-byte register.");
                 return false;
             }
 
@@ -1998,7 +2079,8 @@ namespace G10::ASM
                 case CPU::RegisterAccess::DoubleWord:   base = 0x66; break;
             }
 
-            destRegClass = regClass1;          
+            destRegClass = regClass1; 
+            param1 = regIndex1;         
         }
         else
         {
@@ -2010,7 +2092,7 @@ namespace G10::ASM
         // Operand 2 (one of the following):
         // - Integer Expression
         // - Register Expression
-        // - Pointer Expression (Register; Byte Accumulator Only)
+        // - Pointer Expression (Register; Low Byte Only)
         if (const auto bin2 = EvaluateBinaryExpression(op2))
         {
             EmitOpcode(base, param1, param2);
@@ -2049,6 +2131,13 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte && 
+                destRegClass == CPU::RegisterAccess::LowByte)
+            {
+                return EmitOpcode(0xD2, param1, regIndex2);
+            }
+
             if (regClass2 != destRegClass)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SUB' Instruction: "
@@ -2063,7 +2152,7 @@ namespace G10::ASM
             if (destRegClass != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SUB' Instruction: "
-                    "Expected byte accumulator for pointer expression.");
+                    "Expected a low byte register for pointer expression.");
                 return false;
             }
 
@@ -2101,11 +2190,12 @@ namespace G10::ASM
     auto Codegen::DispatchSBC (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x5900 SBC L0, IMM8`
-        // `0x5A0Y SBC L0, LY`
-        // `0x5B0Y SBC L0, [DY]`
-        // - Subtracts value and carry from accumulator, storing result in
-        //   accumulator.
+        // `0x5900 SBC LX, IMM8`
+        // `0x5A0Y SBC LX, LY`
+        // `0x5B0Y SBC LX, [DY]`
+        // `0xD3XY SBC LX, HY`
+        // - Subtracts value and carry from destination, storing result in
+        //   destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -2130,15 +2220,16 @@ namespace G10::ASM
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
 
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SBC' Instruction: "
-                    "Expected the low byte accumulator register.");
+                    "Expected a low byte register.");
                 return false;
             }
 
             base = 0x59;
-            destRegClass = regClass1;          
+            destRegClass = regClass1;  
+            param1 = regIndex1;        
         }
         else
         {
@@ -2150,7 +2241,7 @@ namespace G10::ASM
         // Operand 2 (one of the following):
         // - Integer Expression
         // - Register Expression
-        // - Pointer Expression (Register; Byte Accumulator Only)
+        // - Pointer Expression (Register; Low Byte Only)
         if (const auto bin2 = EvaluateBinaryExpression(op2))
         {
             return
@@ -2174,6 +2265,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD3, param1, regIndex2);
+            }
+
             if (regClass2 != destRegClass)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SBC' Instruction: "
@@ -2188,7 +2285,7 @@ namespace G10::ASM
             if (destRegClass != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.SBC' Instruction: "
-                    "Expected byte accumulator for pointer expression.");
+                    "Expected a low byte register for pointer expression.");
                 return false;
             }
 
@@ -2230,6 +2327,7 @@ namespace G10::ASM
         // `0x5DX0 INC [DX]`
         // `0x6CX0 INC WX`
         // `0x6DX0 INC DX`
+        // `0xD4X0 INC HX`
         // - Increments a value.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -2251,6 +2349,7 @@ namespace G10::ASM
             switch (regClass1)
             {
                 case CPU::RegisterAccess::LowByte:      return EmitOpcode(0x5C, regIndex1, 0);
+                case CPU::RegisterAccess::HighByte:     return EmitOpcode(0xD4, regIndex1, 0);
                 case CPU::RegisterAccess::Word:         return EmitOpcode(0x6C, regIndex1, 0);
                 case CPU::RegisterAccess::DoubleWord:   return EmitOpcode(0x6D, regIndex1, 0);
                 default:
@@ -2299,6 +2398,7 @@ namespace G10::ASM
         // `0x5FX0 DEC [DX]`
         // `0x6EX0 DEC WX`
         // `0x6FX0 DEC DX`
+        // `0xD5X0 DEC HX`
         // - Decrements a value.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -2320,6 +2420,7 @@ namespace G10::ASM
             switch (regClass1)
             {
                 case CPU::RegisterAccess::LowByte:      return EmitOpcode(0x5E, regIndex1, 0);
+                case CPU::RegisterAccess::HighByte:     return EmitOpcode(0xD5, regIndex1, 0);
                 case CPU::RegisterAccess::Word:         return EmitOpcode(0x6E, regIndex1, 0);
                 case CPU::RegisterAccess::DoubleWord:   return EmitOpcode(0x6F, regIndex1, 0);
                 default:
@@ -2364,10 +2465,11 @@ namespace G10::ASM
     auto Codegen::DispatchAND (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x7000 AND L0, IMM8`
-        // `0x710Y AND L0, LY`
-        // `0x720Y AND L0, [DY]`
-        // - Bitwise ANDs accumulator and value, storing result in accumulator.
+        // `0x7000 AND LX, IMM8`
+        // `0x710Y AND LX, LY`
+        // `0x720Y AND LX, [DY]`
+        // `0xD6XY AND LX, HY`
+        // - Bitwise ANDs destination and value, storing result in destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -2390,10 +2492,10 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.AND' Instruction: "
-                    "Expected low byte accumulator register for register expression.");
+                    "Expected a low byte register for register expression.");
                 return false;
             }
 
@@ -2427,6 +2529,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD6, param1, regIndex2);
+            }
+
             if (regClass2 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.AND' Instruction: "
@@ -2472,10 +2580,11 @@ namespace G10::ASM
     auto Codegen::DispatchOR (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x7300 OR L0, IMM8`
-        // `0x740Y OR L0, LY`
-        // `0x750Y OR L0, [DY]`
-        // - Bitwise ORs value and accumulator, storing result in accumulator.
+        // `0x73X0 OR LX, IMM8`
+        // `0x74XY OR LX, LY`
+        // `0x75XY OR LX, [DY]`
+        // `0xD7XY OR LX, HY`
+        // - Bitwise ORs value and destination, storing result in destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -2498,10 +2607,10 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.OR' Instruction: "
-                    "Expected low byte accumulator register for register expression.");
+                    "Expected a low byte register for register expression.");
                 return false;
             }
 
@@ -2535,6 +2644,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD7, param1, regIndex2);
+            }
+
             if (regClass2 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.OR' Instruction: "
@@ -2580,10 +2695,11 @@ namespace G10::ASM
     auto Codegen::DispatchXOR (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x7600 XOR L0, IMM8`
-        // `0x770Y XOR L0, LY`
-        // `0x780Y XOR L0, [DY]`
-        // - Bitwise XORs value and accumulator, storing result in accumulator.
+        // `0x76X0 XOR LX, IMM8`
+        // `0x77XY XOR LX, LY`
+        // `0x78XY XOR LX, [DY]`
+        // `0xD8XY XOR LX, HY`
+        // - Bitwise XORs value and destination, storing result in destination.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -2606,10 +2722,10 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.XOR' Instruction: "
-                    "Expected low byte accumulator register for register expression.");
+                    "Expected a low byte register for register expression.");
                 return false;
             }
 
@@ -2643,6 +2759,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xD8, param1, regIndex2);
+            }
+
             if (regClass2 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.XOR' Instruction: "
@@ -2690,6 +2812,7 @@ namespace G10::ASM
     {
         // `0x79X0 NOT LX`
         // `0x7AX0 NOT [DX]`
+        // `0xD9X0 NOT HX`
         // - Compliments (bitwise NOTs) a value.
         // - 0 or 1 operands.
         if (pNode.mOperands.size() > 1)
@@ -2715,6 +2838,7 @@ namespace G10::ASM
             switch (regClass1)
             {
                 case CPU::RegisterAccess::LowByte:      return EmitOpcode(0x79, regIndex1, 0);
+                case CPU::RegisterAccess::HighByte:     return EmitOpcode(0xD9, regIndex1, 0);
                 default:
                     mDiag.ReportError(pNode.mLocation, "'.NOT' Instruction: "
                         "Unexpected register class.");
@@ -2757,10 +2881,11 @@ namespace G10::ASM
     auto Codegen::DispatchCMP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {        
-        // `0x7D00 CMP L0, IMM8`
-        // `0x7E0Y CMP L0, LY`
-        // `0x7F0Y CMP L0, [DY]`
-        // - Subtracts value from accumulator, without storing result.
+        // `0x7DX0 CMP LX, IMM8`
+        // `0x7EXY CMP LX, LY`
+        // `0x7FXY CMP LX, [DY]`
+        // `0xDAXY CMP LX, HY`
+        // - Subtracts value from destination, without storing result.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
         {
@@ -2783,10 +2908,10 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regIndex1 > 0 || regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.CMP' Instruction: "
-                    "Expected low byte accumulator register for register expression.");
+                    "Expected a low byte register for register expression.");
                 return false;
             }
 
@@ -2820,6 +2945,12 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
+
+            if (regClass2 == CPU::RegisterAccess::HighByte)
+            {
+                return EmitOpcode(0xDA, param1, regIndex2);
+            }
+
             if (regClass2 != CPU::RegisterAccess::LowByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.CMP' Instruction: "
@@ -2866,7 +2997,8 @@ namespace G10::ASM
         ObjectSectionContext& pCtx) -> bool
     {
         // `0x80X0 SLA LX`
-        // `0x81X0 SLA [DX]`
+        // `0x81X0 SLA HX`
+        // `0x82X0 SLA [DX]`
         // - Shifts value left by one bit (arithmetic).
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -2885,14 +3017,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x80, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x81, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.SLA' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x80, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -2908,7 +3042,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x81, regIndex1, 0);
+                return EmitOpcode(0x82, regIndex1, 0);
             }
             else
             {
@@ -2928,8 +3062,9 @@ namespace G10::ASM
     auto Codegen::DispatchSRA (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x82X0 SRA LX`
-        // `0x83X0 SRA [DX]`
+        // `0x83X0 SRA LX`
+        // `0x84X0 SRA HX`
+        // `0x85X0 SRA [DX]`
         // - Shifts value right by one bit, preserving sign bit (arithmetic).
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -2948,14 +3083,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x83, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x84, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.SRA' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x82, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -2971,7 +3108,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x83, regIndex1, 0);
+                return EmitOpcode(0x85, regIndex1, 0);
             }
             else
             {
@@ -2991,8 +3128,9 @@ namespace G10::ASM
     auto Codegen::DispatchSRL (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x84X0 SRL LX`
-        // `0x85X0 SRL [DX]`
+        // `0x86X0 SRL LX`
+        // `0x87X0 SRL HX`
+        // `0x88X0 SRL [DX]`
         // - Shifts value right by one bit (logical).
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3011,14 +3149,15 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x86, regIndex1, 0); }
+            if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x87, regIndex1, 0); }
             {
                 mDiag.ReportError(pNode.mLocation, "'.SRL' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x84, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -3034,7 +3173,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x85, regIndex1, 0);
+                return EmitOpcode(0x88, regIndex1, 0);
             }
             else
             {
@@ -3054,10 +3193,11 @@ namespace G10::ASM
     auto Codegen::DispatchSWAP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x86X0 SWAP LX`
-        // `0x87X0 SWAP [DX]`
-        // `0x88X0 SWAP WX`
-        // `0x89X0 SWAP DX`
+        // `0x89X0 SWAP LX`
+        // `0x8AX0 SWAP HX`
+        // `0x8BX0 SWAP [DX]`
+        // `0x8CX0 SWAP WX`
+        // `0x8DX0 SWAP DX`
         // - Swaps the halves of a value (nibbles of a byte, bytes of a word, etc.)
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3079,11 +3219,13 @@ namespace G10::ASM
             switch (regClass1)
             {
                 case CPU::RegisterAccess::LowByte:
-                    return EmitOpcode(0x86, regIndex1, 0);
-                case CPU::RegisterAccess::Word:
-                    return EmitOpcode(0x88, regIndex1, 0);
-                case CPU::RegisterAccess::DoubleWord:
                     return EmitOpcode(0x89, regIndex1, 0);
+                case CPU::RegisterAccess::HighByte:
+                    return EmitOpcode(0x8A, regIndex1, 0);
+                case CPU::RegisterAccess::Word:
+                    return EmitOpcode(0x8C, regIndex1, 0);
+                case CPU::RegisterAccess::DoubleWord:
+                    return EmitOpcode(0x8D, regIndex1, 0);
                 default:
                     mDiag.ReportError(pNode.mLocation, "'.SWAP' Instruction: "
                         "Invalid register class for register expression.");
@@ -3104,7 +3246,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x87, regIndex1, 0);
+                return EmitOpcode(0x8B, regIndex1, 0);
             }
             else
             {
@@ -3132,8 +3274,9 @@ namespace G10::ASM
     auto Codegen::DispatchRL (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x9100 RL LX`
-        // `0x9200 RL [DX]`
+        // `0x91X0 RL LX`
+        // `0x92X0 RL HX`
+        // `0x93X0 RL [DX]`
         // - Rotates value left by one bit, through the carry flag.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3152,14 +3295,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x91, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x92, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.RL' Instruction: "
                     "Expected low byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x91, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -3175,7 +3320,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x92, regIndex1, 0);
+                return EmitOpcode(0x93, regIndex1, 0);
             }
             else
             {
@@ -3195,7 +3340,7 @@ namespace G10::ASM
     auto Codegen::DispatchRLCA (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x9300 RLCA`
+        // `0x9400 RLCA`
         // - Rotates byte accumulator left by one bit.
         return EmitOpcode(0x9300);
     }
@@ -3203,8 +3348,9 @@ namespace G10::ASM
     auto Codegen::DispatchRLC (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x94X0 RLC LX`
-        // `0x95X0 RLC [DX]`
+        // `0x95X0 RLC LX`
+        // `0x96X0 RLC HX`
+        // `0x97X0 RLC [DX]`
         // - Rotates value left by one bit.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3223,14 +3369,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x95, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x96, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.RLC' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected low or high byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x94, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -3246,7 +3394,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x95, regIndex1, 0);
+                return EmitOpcode(0x97, regIndex1, 0);
             }
             else
             {
@@ -3266,16 +3414,17 @@ namespace G10::ASM
     auto Codegen::DispatchRRA (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x9600 RRA`
+        // `0x9800 RRA`
         // - Rotates byte accumulator right by one bit, through the carry flag.
-        return EmitOpcode(0x9600);
+        return EmitOpcode(0x9800);
     }
 
     auto Codegen::DispatchRR (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x97X0 RR LX`
-        // `0x98X0 RR [DX]`
+        // `0x99X0 RR LX`
+        // `0x9AX0 RR HX`
+        // `0x9BX0 RR [DX]`
         // - Rotates value right by one bit, through the carry flag.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3294,14 +3443,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x99, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x9A, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.RR' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected low or high byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x97, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -3317,7 +3468,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x98, regIndex1, 0);
+                return EmitOpcode(0x9B, regIndex1, 0);
             }
             else
             {
@@ -3337,16 +3488,17 @@ namespace G10::ASM
     auto Codegen::DispatchRRCA (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x9900 RRCA`
+        // `0x9C00 RRCA`
         // - Rotates byte accumulator right by one bit.
-        return EmitOpcode(0x9900);
+        return EmitOpcode(0x9C00);
     }
 
     auto Codegen::DispatchRRC (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x9AX0 RRC LX`
-        // `0x9BX0 RRC [DX]`
+        // `0x9DX0 RRC LX`
+        // `0x9EX0 RRC HX`
+        // `0x9FX0 RRC [DX]`
         // - Rotates value right by one bit.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -3365,14 +3517,16 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0x9D, regIndex1, 0); }
+            else if (regClass1 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0x9E, regIndex1, 0); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.RRC' Instruction: "
-                    "Expected low byte register for register expression.");
+                    "Expected low or high byte register for register expression.");
                 return false;
             }
-
-            return EmitOpcode(0x9A, regIndex1, 0);
         }
         else if (const auto ptr1 = EvaluatePointerExpression(op1))
         {
@@ -3388,7 +3542,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0x9B, regIndex1, 0);
+                return EmitOpcode(0x9F, regIndex1, 0);
             }
             else
             {
@@ -3409,7 +3563,8 @@ namespace G10::ASM
         ObjectSectionContext& pCtx) -> bool
     {
         // `0xA0XY BIT Y, LX`
-        // `0xA1XY BIT Y, [DX]`
+        // `0xA1XY BIT Y, HX`
+        // `0xA2XY BIT Y, [DX]`
         // - Tests one bit in a value.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3450,14 +3605,16 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0xA0, regIndex2, bit); }
+            else if (regClass2 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0xA1, regIndex2, bit); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.BIT' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
-
-            return EmitOpcode(0xA0, regIndex2, bit);
         }
         else if (const auto ptr2 = EvaluatePointerExpression(op2))
         {
@@ -3473,7 +3630,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xA1, regIndex2, bit);
+                return EmitOpcode(0xA2, regIndex2, bit);
             }
             else
             {
@@ -3493,8 +3650,9 @@ namespace G10::ASM
     auto Codegen::DispatchSET (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xA2XY SET Y, LX`
-        // `0xA3XY SET Y, [DX]`
+        // `0xA3XY SET Y, LX`
+        // `0xA4XY SET Y, HX`
+        // `0xA5XY SET Y, [DX]`
         // - Sets one bit in a value
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3535,14 +3693,16 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0xA3, regIndex2, bit); }
+            else if (regClass2 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0xA4, regIndex2, bit); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.SET' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
-
-            return EmitOpcode(0xA2, regIndex2, bit);
         }
         else if (const auto ptr2 = EvaluatePointerExpression(op2))
         {
@@ -3558,7 +3718,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xA3, regIndex2, bit);
+                return EmitOpcode(0xA5, regIndex2, bit);
             }
             else
             {
@@ -3578,8 +3738,9 @@ namespace G10::ASM
     auto Codegen::DispatchRES (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xA4XY RES Y, LX`
-        // `0xA5XY RES Y, [DX]`
+        // `0xA6XY RES Y, LX`
+        // `0xA7XY RES Y, HX`
+        // `0xA8XY RES Y, [DX]`
         // - Resets one bit in a value.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3620,14 +3781,16 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0xA6, regIndex2, bit); }
+            else if (regClass2 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0xA7, regIndex2, bit); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.RES' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
-
-            return EmitOpcode(0xA4, regIndex2, bit);
         }
         else if (const auto ptr2 = EvaluatePointerExpression(op2))
         {
@@ -3643,7 +3806,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xA5, regIndex2, bit);
+                return EmitOpcode(0xA8, regIndex2, bit);
             }
             else
             {
@@ -3663,8 +3826,9 @@ namespace G10::ASM
     auto Codegen::DispatchTOG (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xA6XY TOG Y, LX`
-        // `0xA7XY TOG Y, [DX]`
+        // `0xA9XY TOG Y, LX`
+        // `0xAAXY TOG Y, HX`
+        // `0xABXY TOG Y, [DX]`
         // - Toggles a bit in a byte value.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3705,14 +3869,16 @@ namespace G10::ASM
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 == CPU::RegisterAccess::LowByte)
+                { return EmitOpcode(0xA9, regIndex2, bit); }
+            else if (regClass2 == CPU::RegisterAccess::HighByte)
+                { return EmitOpcode(0xAA, regIndex2, bit); }
+            else
             {
                 mDiag.ReportError(pNode.mLocation, "'.TOG' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
-
-            return EmitOpcode(0xA6, regIndex2, bit);
         }
         else if (const auto ptr2 = EvaluatePointerExpression(op2))
         {
@@ -3728,7 +3894,7 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xA7, regIndex2, bit);
+                return EmitOpcode(0xAB, regIndex2, bit);
             }
             else
             {
@@ -3749,6 +3915,7 @@ namespace G10::ASM
         ObjectSectionContext& pCtx) -> bool
     {
         // `0xB0XY LDI LX, [DY]`
+        // `0xB1XY LDI HX, [DY]`
         // - Loads data from register-pointed memory, then increments register.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3763,19 +3930,22 @@ namespace G10::ASM
         // Operand 1:
         // - Register Expression (Low Byte only)
         std::uint8_t destRegIndex { 0 };
+        CPU::RegisterAccess destRegClass {};
         if (const auto reg1 = EvaluateRegisterExpression(op1))
         {
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte &&
+                regClass1 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.LDI' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
 
             destRegIndex = regIndex1;
+            destRegClass = regClass1;
         }
         else
         {
@@ -3800,7 +3970,11 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xB0, destRegIndex, regIndex2);
+                if (destRegClass == CPU::RegisterAccess::LowByte)
+                    { return EmitOpcode(0xB0, destRegIndex, regIndex2); }
+                else if (destRegClass == CPU::RegisterAccess::HighByte)
+                    { return EmitOpcode(0xB1, destRegIndex, regIndex2); }
+                else return false;
             }
             else
             {
@@ -3820,7 +3994,8 @@ namespace G10::ASM
     auto Codegen::DispatchLDD (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB1XY LDD LX, [DY]`
+        // `0xB2XY LDD LX, [DY]`
+        // `0xB3XY LDD HX, [DY]`
         // - Loads data from register-pointed memory, then decrements register.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -3835,19 +4010,22 @@ namespace G10::ASM
         // Operand 1:
         // - Register Expression (Low Byte only)
         std::uint8_t destRegIndex { 0 };
+        CPU::RegisterAccess destRegClass {};
         if (const auto reg1 = EvaluateRegisterExpression(op1))
         {
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::LowByte && 
+                regClass1 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.LDD' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
 
             destRegIndex = regIndex1;
+            destRegClass = regClass1;
         }
         else
         {
@@ -3872,7 +4050,11 @@ namespace G10::ASM
                     return false;
                 }
 
-                return EmitOpcode(0xB1, destRegIndex, regIndex2);
+                if (destRegClass == CPU::RegisterAccess::LowByte)
+                    { return EmitOpcode(0xB2, destRegIndex, regIndex2); }
+                else if (destRegClass == CPU::RegisterAccess::HighByte)
+                    { return EmitOpcode(0xB3, destRegIndex, regIndex2); }
+                else return false;
             }
             else
             {
@@ -3892,7 +4074,8 @@ namespace G10::ASM
     auto Codegen::DispatchSTI (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB2XY STI [DX], LY`
+        // `0xB4XY STI [DX], LY`
+        // `0xB5XY STI [DX], HY`
         // - Stores data from register to register-pointed memory, then
         //   increments pointer register.
         // - 2 operands.
@@ -3941,19 +4124,22 @@ namespace G10::ASM
         // Operand 2:
         // - Register Expression (Low Byte only)
         std::uint8_t srcRegIndex { 0 };
+        CPU::RegisterAccess srcRegClass {};
         if (const auto reg2 = EvaluateRegisterExpression(op2))
         {
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 != CPU::RegisterAccess::LowByte &&
+                regClass2 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.STI' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
 
             srcRegIndex = regIndex2;
+            srcRegClass = regClass2;
         }
         else
         {
@@ -3962,13 +4148,18 @@ namespace G10::ASM
             return false;
         }
 
-        return EmitOpcode(0xB2, ptrRegIndex, srcRegIndex);
+        if (srcRegClass == CPU::RegisterAccess::LowByte)
+            { return EmitOpcode(0xB4, ptrRegIndex, srcRegIndex); }
+        else if (srcRegClass == CPU::RegisterAccess::HighByte)
+            { return EmitOpcode(0xB5, ptrRegIndex, srcRegIndex); }
+        else return false;
     }
 
     auto Codegen::DispatchSTD (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB3XY STD [DX], LY`
+        // `0xB6XY STD [DX], LY`
+        // `0xB7XY STD [DX], HY`
         // - Stores data from register to register-pointed memory, then
         //   decrements pointer register.
         // - 2 operands.
@@ -4017,19 +4208,22 @@ namespace G10::ASM
         // Operand 2:
         // - Register Expression (Low Byte only)
         std::uint8_t srcRegIndex { 0 };
+        CPU::RegisterAccess srcRegClass {};
         if (const auto reg2 = EvaluateRegisterExpression(op2))
         {
             const auto regUnder2 = std::to_underlying(reg2->second);
             const auto regClass2 = static_cast<CPU::RegisterAccess>(regUnder2 & 0xF0);
             const auto regIndex2 = static_cast<std::uint8_t>(regUnder2 & 0x0F);
-            if (regClass2 != CPU::RegisterAccess::LowByte)
+            if (regClass2 != CPU::RegisterAccess::LowByte &&
+                regClass2 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.STD' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a low or high byte register.");
                 return false;
             }
 
             srcRegIndex = regIndex2;
+            srcRegClass = regClass2;
         }
         else
         {
@@ -4038,13 +4232,17 @@ namespace G10::ASM
             return false;
         }
 
-        return EmitOpcode(0xB3, ptrRegIndex, srcRegIndex);
+        if (srcRegClass == CPU::RegisterAccess::LowByte)
+            { return EmitOpcode(0xB6, ptrRegIndex, srcRegIndex); }
+        else if (srcRegClass == CPU::RegisterAccess::HighByte)
+            { return EmitOpcode(0xB7, ptrRegIndex, srcRegIndex); }
+        else return false;
     }
 
     auto Codegen::DispatchASP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB400 ASP SIMM8`
+        // `0xB800 ASP SIMM8`
         // - Adjusts the stack pointer by the given offset.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -4060,7 +4258,7 @@ namespace G10::ASM
         if (const auto int1 = EvaluateIntegerExpression(op1))
         {
             return 
-                EmitOpcode(0xB400) &&
+                EmitOpcode(0xB800) &&
                 EmitByte(*int1 & 0xFF);
         }
         else
@@ -4074,7 +4272,7 @@ namespace G10::ASM
     auto Codegen::DispatchLASP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB6X0 LASP DX, SIMM8`
+        // `0xBAX0 LASP DX, SIMM8`
         // - Loads stack pointer, adjusted by offset, into register `DX`.
         // - 2 operands.
         if (pNode.mOperands.size() != 2)
@@ -4115,7 +4313,7 @@ namespace G10::ASM
         if (const auto int2 = EvaluateIntegerExpression(op2))
         {
             return
-                EmitOpcode(0xB6, destRegIndex, 0) &&
+                EmitOpcode(0xBA, destRegIndex, 0) &&
                 EmitByte(*int2 & 0xFF);
         }
         else
@@ -4129,23 +4327,23 @@ namespace G10::ASM
     auto Codegen::DispatchISP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB700 ISP`
+        // `0xBB00 ISP`
         // - Increments stack pointer.
-        return EmitOpcode(0xB700);
+        return EmitOpcode(0xBB00);
     }
 
     auto Codegen::DispatchDSP (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB800 DSP`
+        // `0xBC00 DSP`
         // - Decrements stack pointer.
-        return EmitOpcode(0xB800);
+        return EmitOpcode(0xBC00);
     }
 
     auto Codegen::DispatchASR (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0xB9X0 ASR DX`
+        // `0xBDX0 ASR DX`
         // - Adds the stack pointer to register `DX`
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
@@ -4180,6 +4378,6 @@ namespace G10::ASM
             return false;
         }
 
-        return EmitOpcode(0xB9, destRegIndex, 0);
+        return EmitOpcode(0xBD, destRegIndex, 0);
     }
 }

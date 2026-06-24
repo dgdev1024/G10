@@ -1,5 +1,5 @@
 #!/bin/bash
 
 set -e
-make -j$(nproc) $@
+make -j2 $@
 echo "build ok"
