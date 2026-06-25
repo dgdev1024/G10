@@ -169,10 +169,42 @@ namespace G10::ASM
             { return {}; }
 
         const std::size_t start = mIndex;
+        std::size_t depth = 0;
+        bool insideFunction = false;
         while (
             mIndex < mSlice.size() &&
-            mSlice[mIndex].CanContinueExpression() == true
-        ) { ++mIndex; }
+            (
+                mSlice[mIndex].CanContinueExpression() == true ||
+                (
+                    insideFunction == true &&
+                    mSlice[mIndex].mType == TokenType::Comma
+                )
+            )
+        ) 
+        { 
+            if (insideFunction == true)
+            {
+                if (mSlice[mIndex].mType == TokenType::LeftParenthesis)
+                    { ++depth; }
+                else if (mSlice[mIndex].mType == TokenType::RightParenthesis)
+                {
+                    if (--depth == 0)
+                        { insideFunction = false; }
+                }
+            }
+            else if (auto kw = mSlice[mIndex].GetKeyword();
+                     kw &&
+                     kw->Is<PreprocessorFunction>() &&
+                     mIndex + 2 < mSlice.size() &&
+                     mSlice[mIndex + 1].mType == TokenType::LeftParenthesis)
+            {
+                insideFunction = true;
+                depth = 1;
+                ++mIndex;
+            }
+
+            ++mIndex; 
+        }
 
         return mSlice.subspan(start, mIndex - start);
     }

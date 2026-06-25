@@ -427,7 +427,10 @@ namespace G10::ASM
                     }
                 }
                 else
-                    { escape = false; }
+                { 
+                    lexeme += '\\';
+                    escape = false; 
+                }
             }
             else if (escape == true)
             {

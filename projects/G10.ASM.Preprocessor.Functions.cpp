@@ -719,18 +719,44 @@ namespace G10::ASM
             {
                 auto arg1 = pCtx.GetString(0);
                 auto arg2 = pCtx.GetInteger(1);
-                auto arg3 = pCtx.GetInteger(2);
                 if (
                     arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
+                    arg2.has_value() == false
                 )
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pCtx.mDiag.ReportError("Missing or invalid required argument(s).");
                     return {};
                 }
 
-                return PreprocessorString { arg1->substr(*arg2, *arg3) };
+                if (pCtx.mArgs.size() >= 3)
+                {
+                    auto arg3 = pCtx.GetInteger(2);
+                    if (arg3.has_value() == false)
+                    {
+                        pCtx.mDiag.ReportError("Invalid stop argument.");
+                        return {};
+                    }
+                    return PreprocessorString { arg1->substr(*arg2, *arg3 - *arg2) };
+                }
+                else
+                {
+                    return PreprocessorString { arg1->substr(*arg2) };
+                }
+
+                // auto arg1 = pCtx.GetString(0);
+                // auto arg2 = pCtx.GetInteger(1);
+                // auto arg3 = pCtx.GetInteger(2);
+                // if (
+                //     arg1.has_value() == false ||
+                //     arg2.has_value() == false ||
+                //     arg3.has_value() == false
+                // )
+                // {
+                //     pCtx.mDiag.ReportError("Received invalid argument(s).");
+                //     return {};
+                // }
+
+                // return PreprocessorString { arg1->substr(*arg2, *arg3) };
             }
         },
         {
@@ -906,6 +932,7 @@ namespace G10::ASM
             pFunction == PreprocessorFunction::DEFINED ||
             pFunction == PreprocessorFunction::ISCONST ||
             pFunction == PreprocessorFunction::ISSYMBOL ||
+            pFunction == PreprocessorFunction::ISSNIPPET ||
             pFunction == PreprocessorFunction::ISMACRO
         )
         {
@@ -982,10 +1009,12 @@ namespace G10::ASM
         CallContext ctx { mDiag };
         while (pCursor.IsAtEnd() == false)
         {
+            const auto& lead = pCursor.GetNextToken();
             auto val = EvaluateExpression(pCursor);
             if (val.IsUndefined() == true)
             {
-                mDiag.ReportError("Undefined value in function call.");
+                mDiag.ReportError(lead.mLocation, 
+                    "Undefined value in function call.");
                 return {};
             }
 
@@ -1002,14 +1031,15 @@ namespace G10::ASM
             }
             else
             {
-                mDiag.ReportError("Expected ')' after function arguments.");
+                mDiag.ReportError(lead.mLocation, "Expected ')' after function arguments.");
                 return {};
             }
         }
 
         if (pCursor.ExpectNextToken(TokenType::RightParenthesis).has_value() == false)
         {
-            mDiag.ReportError("Expected ')' after function arguments.");
+            const auto& tk = pCursor.GetNextToken();
+            mDiag.ReportError(tk.mLocation, "Expected ')' after function arguments.");
             return {};
         }
 

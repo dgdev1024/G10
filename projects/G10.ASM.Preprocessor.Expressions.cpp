@@ -17,10 +17,23 @@ namespace G10::ASM
     {
         auto        startIndex = pCursor.GetIndex();
         auto        exprSlice = DeepSlice(pCursor.CollectExpression());
+
+        // for (const auto& tk : exprSlice)
+        // {
+        //     debug(" - Token: '{}' '{}', '{}' ({})", 
+        //         tk.StringifyGroup(),
+        //         tk.StringifyType(),
+        //         tk.Stringify().value_or(""),
+        //         pCursor.GetIndex()
+        //     );  
+        // }
+
         TokenCursor exprCursor { exprSlice };
         auto        exprValue = EvaluateExpression(exprCursor);
         if (exprValue.IsUndefined())
-            { pCursor.SetIndex(startIndex); }
+        {
+            pCursor.SetIndex(startIndex);
+        }
 
         return exprValue;
     }
@@ -661,6 +674,12 @@ namespace G10::ASM
             {
                 if (pText[index + 1] == '{' || pText[index + 1] == '}')
                     { result += pText[index + 1]; index += 2; continue; }
+                else
+                {
+                    result += '\\';
+                    index += 1;
+                    continue;
+                }
             }
             else if (pText[index] != '{')
                 { result += pText[index++]; continue; }
