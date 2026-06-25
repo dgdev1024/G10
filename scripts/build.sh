@@ -1,5 +1,5 @@
 #!/bin/bash
 
 set -e
-make -j2 $@
+make -j8 $@
 echo "build ok"

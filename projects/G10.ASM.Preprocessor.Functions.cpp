@@ -941,7 +941,7 @@ namespace G10::ASM
             {
                 case PreprocessorFunction::DEFINED:
                     return PreprocessorInteger {
-                        (mSymbols.contains(*lexeme) || mMacros.contains(*lexeme))
+                        (mSymbols.contains(*lexeme) || mMacros.contains(*lexeme) || mSnippets.contains(*lexeme))
                             ? 1 : 0  
                     };
                 case PreprocessorFunction::ISMACRO:
@@ -951,6 +951,10 @@ namespace G10::ASM
                 case PreprocessorFunction::ISSYMBOL:
                     return PreprocessorInteger {
                         mSymbols.contains(*lexeme) ? 1 : 0
+                    };
+                case PreprocessorFunction::ISSNIPPET:
+                    return PreprocessorInteger {
+                        mSnippets.contains(*lexeme) ? 1 : 0
                     };
                 case PreprocessorFunction::ISCONST: {
                     auto findIt = mSymbols.find(*lexeme);

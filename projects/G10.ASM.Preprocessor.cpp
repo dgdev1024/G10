@@ -6,6 +6,7 @@
 
 // Includes ********************************************************************
 
+#include <G10.ASM.Lexer.hpp>
 #include <G10.ASM.Preprocessor.hpp>
 
 // Public - Constructors & Destructor ******************************************
@@ -82,6 +83,54 @@ namespace G10::ASM
         {
             mIncludeDirs.push_back(NormalizePath(dir));
         }
+    }
+
+    auto Preprocessor::SetDefines (const stx::dictionary<std::string>& pDefines) -> bool
+    {
+        for (const auto& [key, val] : pDefines)
+        {
+            if (val.empty() == true)
+            {
+                mSymbols[key] = PreprocessorSymbol {
+                    .mValue = PreprocessorInteger { 1 },
+                    .mIsConstant = true,
+                    .mLocation = SourceLocation {
+                        .mPath = std::format("<define '{}'>", key),
+                        .mLine = 0,
+                        .mColumn = 0
+                    }
+                };
+            }
+            else
+            {
+                Lexer lex { mDiag };
+                if (lex.LexString(val, false) == false)
+                {
+                    mDiag.ReportError("Error lexing value of define '{}'", key);
+                    return false;
+                }
+
+                TokenCursor cursor { lex.GetTokens() };
+                auto val = EvaluateExpression(cursor);
+                if (val.IsUndefined() == true)
+                {
+                    mDiag.ReportError("Error evaluating value of define '{}'", key);
+                    return false;
+                }
+
+                mSymbols[key] = PreprocessorSymbol {
+                    .mValue = val,
+                    .mIsConstant = true,
+                    .mLocation = SourceLocation {
+                        .mPath = std::format("<define '{}'>", key),
+                        .mLine = 0,
+                        .mColumn = 0
+                    }
+                };
+            }
+        }
+
+        return true;
     }
 }
 

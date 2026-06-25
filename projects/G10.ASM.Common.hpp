@@ -167,6 +167,7 @@ namespace G10::ASM
         ISCONST,
         ISMACRO,
         ISSYMBOL,
+        ISSNIPPET
     };
 
     enum class SectionName : std::uint8_t

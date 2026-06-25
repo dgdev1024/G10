@@ -101,6 +101,7 @@ namespace G10::ASM
         auto SetIncludeDepthLimit (std::size_t pIncludeDepthLimit) -> void;
         auto SetRecursionDepthLimit (std::size_t pRecursionDepthLimit) -> void;
         auto SetIncludeDirectories (const std::vector<std::string>& pIncludeDirs) -> void;
+        auto SetDefines (const stx::dictionary<std::string>& pDefines) -> bool;
 
     private: // Methods - Preprocess *******************************************
 

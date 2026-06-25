@@ -323,6 +323,7 @@ namespace G10::ASM
         { "ISCONST", Keyword { PreprocessorFunction::ISCONST } },
         { "ISMACRO", Keyword { PreprocessorFunction::ISMACRO } },
         { "ISSYMBOL", Keyword { PreprocessorFunction::ISSYMBOL } },
+        { "ISSNIPPET", Keyword { PreprocessorFunction::ISSNIPPET } },
 
         { "METADATA", Keyword { SectionName::METADATA } },
         { "INT0", Keyword { SectionName::INT0 } },
@@ -752,6 +753,7 @@ namespace G10::ASM
                     case PreprocessorFunction::ISCONST: return "ISCONST";
                     case PreprocessorFunction::ISMACRO: return "ISMACRO";
                     case PreprocessorFunction::ISSYMBOL: return "ISSYMBOL";
+                    case PreprocessorFunction::ISSNIPPET: return "ISSNIPPET";
                     default: return "";
                 }
             },

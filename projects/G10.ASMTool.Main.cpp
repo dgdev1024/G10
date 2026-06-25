@@ -40,6 +40,7 @@ namespace G10::ASM::Tool
     static std::string                  sOutputFile { "" };
     static std::vector<std::string>     sLinkFiles {};
     static std::vector<std::string>     sIncludeDirs {};
+    static stx::dictionary<std::string> sDefines {};
     static bool                         sTest { false };
 }
 
@@ -164,6 +165,23 @@ namespace G10::ASM::Tool
                     return false;
                 }
             }
+            else if (arg == "-D" || arg == "--define")
+            {
+                std::string key {};
+                if (i >= argc || std::string { argv[i] }.starts_with('-'))
+                {
+                    std::println(stderr,
+                        "Error: Missing definition after '{}'.", arg);
+                    return false;
+                }
+                else { key = argv[i++]; }
+
+                std::string val {};
+                while (i < argc && std::string { argv[i] }.starts_with('-') == false)
+                    { val = argv[i++]; }
+
+                sDefines[key] = val;
+            }
         }
 
         if (sShowHelp == true || sShowVersion == true || sTest == true)
@@ -223,20 +241,21 @@ namespace G10::ASM::Tool
             "  -L <files>, --link-files <files> Link object files into an output executable.\n"
             "  -I <dirs>, --include-dirs <dirs> Include directories for preprocessing and binary inclusion.\n"
             "                                   Ignored if '--lex', '--preprocess' or '--parse'\n"
-            "                                   is also specified.\n"
-            "  --verbose                        Enable verbose diagnostic output.\n"
+            "  -D <define>[ <value>]            Define a preprocessor constant with an optional value.\n"
+            "                                   If no value is specified, the constant is defined with a value of 1.\n"
+            "  -V, --verbose                    Enable verbose diagnostic output.\n"
             "  --wextra                         Enable extra, verbose warnings.\n"
             "  --werror                         Treat all warnings as errors.\n"
             "  --skip-preprocess                Skips first-pass lexing and preprocessing.\n"
             "                                   Mutually exclusive with '--preprocess' and\n"
             "                                   '--output-preprocess'.\n"
-            "  --lex                            Prints the result of first-pass lexing.\n"
+            "  -l, --lex                        Prints the result of first-pass lexing.\n"
             "                                   If '--skip-preprocess' or '--preprocess' is also\n"
             "                                   specified, prints the result of second-pass\n"
             "                                   lexing, instead.\n"
-            "  --preprocess                     Performs up to the preprocessing step only.\n"
+            "  -p, --preprocess                 Performs up to the preprocessing step only.\n"
             "                                   Mutually exclusive with '--skip-preprocess'.\n"
-            "  --parse                          Parses the input file and displays the syntax tree.\n"
+            "  -r, --parse                      Parses the input file and displays the syntax tree.\n"
             "  --output-preprocess              Prints the preprocessed source code string.\n"
             "                                   Mutually exclusive with '--skip-preprocess'.\n"
             "  -x, --examine-object             Examines an assembled object file.\n"
@@ -600,6 +619,11 @@ namespace G10::ASM::Tool
             pp.SetRecursionDepthLimit(sRecursionDepth);
             pp.SetLoopDepthLimit(sLoopDepth);
             pp.SetIncludeDirectories(sIncludeDirs);
+            if (pp.SetDefines(sDefines) == false)
+            {
+                ReportDiagnostic(diag);
+                return 1;
+            }
 
             if (lex.LexFile(sInputFile, false) == false)
             {

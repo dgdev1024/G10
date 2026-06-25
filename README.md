@@ -59,10 +59,14 @@ To build and install the projects in this workspace...
             configured build tool (default: `make`).
     - Run the `scripts/install.sh` to install the release build libraries and
         binaries to a target destination (default `/usr/local/lib` and `/usr/local/bin`).
+        - *Note*: If installing to default paths, you will likely need to run
+            this script as root (use `sudo`).
         - *Note*: If installing shared libraries, you may need to run `ldconfig`
             after installing.
     - Run the `scripts/asm.sh` script to assemble and link G10 assembly code.
         - Pass in a folder containing the G10 assembly source code to build.
+    - Run the `scripts/example.sh` script to build all of the example projects,
+        without having to run `scripts/full-build.sh` first.
     - Run the `scripts/clean.sh` script to clean the build artifacts.
 
 ## Projects
