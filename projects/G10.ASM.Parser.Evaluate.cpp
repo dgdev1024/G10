@@ -29,7 +29,7 @@ namespace G10::ASM
             auto lexeme = token.Stringify().value_or("");
             if (auto findIt = mSymbolTable.find(lexeme);
                 findIt != mSymbolTable.end() &&
-                findIt->second.mValue.IsInteger())
+                findIt->second.mValue.IsNumeric())
             {
                 auto node = std::make_shared<IntegerExpressionNode>();
                 node->mLocation = pLocation;
