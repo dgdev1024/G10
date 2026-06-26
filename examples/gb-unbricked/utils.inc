@@ -55,7 +55,7 @@
 wait_vblank:
     ldp l0, [rLY]
     cmp l0, LY_VBLANK
-    jpb cs, wait_vblank
+    jpb c, wait_vblank
     ret
 
 ;
@@ -64,7 +64,7 @@ wait_vblank:
 wait_out_vblank:
     ldp l0, [rLY]
     cmp l0, LY_VBLANK
-    jpb cc, wait_out_vblank
+    jpb nc, wait_out_vblank
     ret
 
 ;
@@ -96,7 +96,7 @@ clear_oam:
 clear_oam_loop:
     sti [d2], l0
     dec l1
-    jpb zc, clear_oam_loop
+    jpb nz, clear_oam_loop
     ret
 
 ;
@@ -119,5 +119,5 @@ _memcpy_loop:
     dec w13
     mv l0, h13
     or l0, l13
-    jpb zc, _memcpy_loop
+    jpb nz, _memcpy_loop
     ret

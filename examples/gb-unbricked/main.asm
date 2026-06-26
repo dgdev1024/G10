@@ -136,17 +136,17 @@ get_tile_by_pixel:
 
 is_wall_tile:
     cmp l0, $00
-    ret zs
+    ret z
     cmp l0, $01
-    ret zs
+    ret z
     cmp l0, $02
-    ret zs
+    ret z
     cmp l0, $04
-    ret zs
+    ret z
     cmp l0, $05
-    ret zs
+    ret z
     cmp l0, $06
-    ret zs
+    ret z
     cmp l0, $07
     ret
 
@@ -154,13 +154,13 @@ check_brick:
     ld l1, kBlankTile
     ld l0, [d3]
     cmp l0, kBrickLeft
-    jpb zc, check_brick.right
+    jpb nz, check_brick.right
     sti [d3], l1
     st [d3], l1
     call score_point
 check_brick.right:
     cmp l0, kBrickRight
-    ret zc
+    ret nz
     std [d3], l1
     st [d3], l1
     call score_point
@@ -200,7 +200,7 @@ title_screen.loop:
     call update_keys
     ld l0, [wCurrentKeys]
     and l0, JOYP_PAD_START
-    jpb zs, title_screen.loop
+    jpb z, title_screen.loop
     call wait_out_vblank
     ret
 
@@ -257,7 +257,7 @@ bounce_on_top:
     call get_tile_by_pixel
     ld l0, [d3]
     call is_wall_tile
-    jpb zc, bounce_on_right
+    jpb nz, bounce_on_right
     call check_brick
     ld l0, 1
     st [wBallVelocityY], l0
@@ -272,7 +272,7 @@ bounce_on_right:
     call get_tile_by_pixel
     ld l0, [d3]
     call is_wall_tile
-    jpb zc, bounce_on_left
+    jpb nz, bounce_on_left
     call check_brick
     ld l0, -1
     st [wBallVelocityX], l0
@@ -287,7 +287,7 @@ bounce_on_left:
     call get_tile_by_pixel
     ld l0, [d3]
     call is_wall_tile
-    jpb zc, bounce_on_bottom
+    jpb nz, bounce_on_bottom
     call check_brick
     ld l0, 1
     st [wBallVelocityX], l0
@@ -302,7 +302,7 @@ bounce_on_bottom:
     call get_tile_by_pixel
     ld l0, [d3]
     call is_wall_tile
-    jpb zc, bounce_on_paddle
+    jpb nz, bounce_on_paddle
     call check_brick
     ld l0, -1
     st [wBallVelocityY], l0
@@ -313,18 +313,18 @@ bounce_on_paddle:
     mv l1, l0
     ld l0, [mOAM + (2 * 4)]         ; Ball's Y position.
     cmp l0, l1
-    jpb zc, bounce_done
+    jpb nz, bounce_done
 
     ld l0, [mOAM + (2 * 4) + 1]     ; Ball's X position
     mv l1, l0
     ld l0, [mOAM + (0 * 4) + 1]     ; Paddle Left Side's X position
     sub l0, 8
     cmp l0, l1
-    jpb cc, bounce_done
+    jpb nc, bounce_done
     ld l0, [mOAM + (1 * 4) + 1]     ; Paddle Right Side's X position
     sub l0, 8
     cmp l0, l1
-    jpb cc, bounce_done
+    jpb nc, bounce_done
     add l0, 16
     cmp l0, l1
     jpb cs, bounce_done
@@ -336,12 +336,12 @@ bounce_done:
 check_left:
     ld l0, [wCurrentKeys]
     and l0, JOYP_PAD_LEFT
-    jpb zs, check_right
+    jpb z, check_right
 left:
     ld l0, [mOAM + 1]
     dec l0
     cmp l0, 15
-    jpb zs, main_loop
+    jpb z, main_loop
     st [mOAM + 1], l0
     ld l0, [mOAM + 5]
     dec l0
@@ -351,12 +351,12 @@ left:
 check_right:
     ld l0, [wCurrentKeys]
     and l0, JOYP_PAD_RIGHT
-    jpb zs, main_loop
+    jpb z, main_loop
 right:
     ld l0, [mOAM + 5]
     inc l0
     cmp l0, 105
-    jpb zs, main_loop
+    jpb z, main_loop
     st [mOAM + 5], l0
     ld l0, [mOAM + 1]
     inc l0

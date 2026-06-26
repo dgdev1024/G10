@@ -63,6 +63,12 @@ namespace G10::ASM
 
         if (const auto c = stx::to<ConditionExpressionNode>(pNode))
             { return std::make_pair(c->mName, c->mCondition); }
+        else if (const auto r = stx::to<RegisterExpressionNode>(pNode);
+                 r->mName == "L1" &&
+                 r->mRegister == CPU::Register::L1)
+        {
+            return std::make_pair(r->mName, CPU::Condition::CS);
+        }
 
         return std::nullopt;
     }
