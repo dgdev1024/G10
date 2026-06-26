@@ -7,6 +7,7 @@
 // Includes ********************************************************************
 
 #include <G10.ASM.Diagnostic.hpp>
+#include <G10.ASM.Preprocessor.hpp>
 #include <G10.ASM.TokenCursor.hpp>
 #include <G10.ASM.Syntax.hpp>
 
@@ -18,7 +19,8 @@ namespace G10::ASM
     {
     public: // Constructors & Destructor ***************************************
 
-        explicit Parser (Diagnostic& pDiag);
+        explicit Parser (Diagnostic& pDiag, 
+            const PreprocessorSymbolTable& pSymbolTable);
 
     public: // Methods - Input & Output ****************************************
 
@@ -98,6 +100,7 @@ namespace G10::ASM
     private: // Members ********************************************************
 
         Diagnostic& mDiag;
+        const PreprocessorSymbolTable& mSymbolTable;
         SyntaxModule mOutput {};
 
     };

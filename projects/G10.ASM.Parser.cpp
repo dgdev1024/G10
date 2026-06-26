@@ -12,8 +12,9 @@
 
 namespace G10::ASM
 {
-    Parser::Parser (Diagnostic& pDiag) :
-        mDiag   { pDiag }
+    Parser::Parser (Diagnostic& pDiag, const PreprocessorSymbolTable& pSymbolTable) :
+        mDiag           { pDiag },
+        mSymbolTable    { pSymbolTable }
     {}
 }
 

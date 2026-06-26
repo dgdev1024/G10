@@ -16,13 +16,26 @@ namespace G10::ASM
         TokenCursor& pCursor) -> std::shared_ptr<IntegerExpressionNode>
     {
         const auto resetIndex = pCursor.GetIndex();
-        if (const auto& token = pCursor.GetNextToken(true);
-            token.IsInteger() == true)
+        const auto& token = pCursor.GetNextToken(true);
+        if (token.IsInteger() == true)
         {
             auto node = std::make_shared<IntegerExpressionNode>();
             node->mLocation = pLocation;
             node->mValue = static_cast<std::uint32_t>(*token.mInteger);
             return node;
+        }
+        else if (token.mType == TokenType::Identifier)
+        {
+            auto lexeme = token.Stringify().value_or("");
+            if (auto findIt = mSymbolTable.find(lexeme);
+                findIt != mSymbolTable.end() &&
+                findIt->second.mValue.IsInteger())
+            {
+                auto node = std::make_shared<IntegerExpressionNode>();
+                node->mLocation = pLocation;
+                node->mValue = findIt->second.mValue.EmitInteger();
+                return node;
+            }
         }
 
         pCursor.SetIndex(resetIndex);
@@ -39,6 +52,19 @@ namespace G10::ASM
             node->mLocation = pLocation;
             node->mValue = *str->Stringify();
             return node;
+        }
+        else if (const auto id = pCursor.ExpectNextToken(TokenType::Identifier))
+        {
+            auto lexeme = id->Stringify().value_or("");
+            if (auto findIt = mSymbolTable.find(lexeme);
+                findIt != mSymbolTable.end() &&
+                findIt->second.mValue.IsString())
+            {
+                auto node = std::make_shared<StringExpressionNode>();
+                node->mLocation = pLocation;
+                node->mValue = findIt->second.mValue.EmitString();
+                return node;
+            }
         }
 
         pCursor.SetIndex(resetIndex);
@@ -169,6 +195,23 @@ namespace G10::ASM
             auto node = std::make_shared<LabelExpressionNode>();
             node->mLocation = pLocation;
             node->mSymbol = *id->Stringify();
+
+            // How many periods are in this label? No more than one.
+            bool foundPeriod = false;
+            std::size_t periodIndex = 0;
+            while (node->mSymbol.find_first_of('.', periodIndex) != std::string::npos)
+            {
+                if (foundPeriod == true)
+                {
+                    mDiag.ReportError(pLocation, "Address label may not contain multiple periods.");
+                    pCursor.SetIndex(resetIndex);
+                    return nullptr;
+                }
+
+                foundPeriod = true;
+                periodIndex = node->mSymbol.find_first_of('.', periodIndex) + 1;
+            }
+
             return node;
         }
 

@@ -25,7 +25,6 @@ namespace G10::ASM::Tool
     static bool                         sVerbose { false };
     static bool                         sWextra { false };
     static bool                         sWerror { false };
-    static bool                         sSkipPreprocess { false };
     static bool                         sLex { false };
     static bool                         sPreprocessOnly { false };
     static bool                         sOutputPreprocess { false };
@@ -86,8 +85,6 @@ namespace G10::ASM::Tool
                 { sWextra = true; }
             else if (arg == "-Werror" || arg == "--werror")
                 { sWerror = true; }
-            else if (arg == "-s" || arg == "--skip-preprocess")
-                { sSkipPreprocess = true; }
             else if (arg == "-l" || arg == "--lex")
                 { sLex = true; }
             else if (arg == "-p" || arg == "--preprocess")
@@ -187,14 +184,6 @@ namespace G10::ASM::Tool
         if (sShowHelp == true || sShowVersion == true || sTest == true)
             { return true; }
 
-        if (sSkipPreprocess == true && (sPreprocessOnly == true || sOutputPreprocess == true))
-        {
-            std::println(stderr,
-                "Error: '--skip-preprocess' is mutually exclusive with "
-                "'--preprocess' and '--output-preprocess'.");
-            return false;
-        }
-
         if (sInputFile.empty() == true && sLinkFiles.empty() == true)
         {
             std::println(stderr, 
@@ -246,9 +235,6 @@ namespace G10::ASM::Tool
             "  -V, --verbose                    Enable verbose diagnostic output.\n"
             "  --wextra                         Enable extra, verbose warnings.\n"
             "  --werror                         Treat all warnings as errors.\n"
-            "  --skip-preprocess                Skips first-pass lexing and preprocessing.\n"
-            "                                   Mutually exclusive with '--preprocess' and\n"
-            "                                   '--output-preprocess'.\n"
             "  -l, --lex                        Prints the result of first-pass lexing.\n"
             "                                   If '--skip-preprocess' or '--preprocess' is also\n"
             "                                   specified, prints the result of second-pass\n"
@@ -597,74 +583,57 @@ namespace G10::ASM::Tool
         }
 
         Lexer lex { diag };
-
-        if (sSkipPreprocess == true)
+        Preprocessor pp { diag };
+        pp.SetInterpolationDepthLimit(sInterpolationDepth);
+        pp.SetIncludeDepthLimit(sIncludeDepth);
+        pp.SetRecursionDepthLimit(sRecursionDepth);
+        pp.SetLoopDepthLimit(sLoopDepth);
+        pp.SetIncludeDirectories(sIncludeDirs);
+        if (pp.SetDefines(sDefines) == false)
         {
-            if (lex.LexFile(sInputFile, true) == false)
-            {
-                ReportDiagnostic(diag);
-                return 1;
-            }
-            else if (sLex == true)
-            {
-                ReportLex(lex);
-                return 0;
-            }
-        }
-        else
-        {
-            Preprocessor pp { diag };
-            pp.SetInterpolationDepthLimit(sInterpolationDepth);
-            pp.SetIncludeDepthLimit(sIncludeDepth);
-            pp.SetRecursionDepthLimit(sRecursionDepth);
-            pp.SetLoopDepthLimit(sLoopDepth);
-            pp.SetIncludeDirectories(sIncludeDirs);
-            if (pp.SetDefines(sDefines) == false)
-            {
-                ReportDiagnostic(diag);
-                return 1;
-            }
-
-            if (lex.LexFile(sInputFile, false) == false)
-            {
-                ReportDiagnostic(diag);
-                return 1;
-            }
-            else if (sLex == true && sOutputPreprocess == false)
-            {
-                ReportLex(lex);
-                return 0;
-            }
-
-            if (pp.PreprocessInput(lex.GetTokens()) == false)
-            {
-                ReportDiagnostic(diag);
-                return 1;
-            }
-            else if (sLex == false && sOutputPreprocess == true)
-            {
-                ReportPreprocess(pp);
-                return 0;
-            }
-
-            if (sPreprocessOnly == true)
-            {
-                return 0;
-            }
-
-            if (lex.LexString(pp.GetOutput(), true) == false)
-            {
-                ReportDiagnostic(diag);
-                return 1;
-            }
-            else if (sLex == true && sOutputPreprocess == true)
-            {
-                ReportLex(lex);
-                return 0;
-            }
+            ReportDiagnostic(diag);
+            return 1;
         }
 
-        Parser parser { diag };
+        if (lex.LexFile(sInputFile, false) == false)
+        {
+            ReportDiagnostic(diag);
+            return 1;
+        }
+        else if (sLex == true && sOutputPreprocess == false)
+        {
+            ReportLex(lex);
+            return 0;
+        }
+
+        if (pp.PreprocessInput(lex.GetTokens()) == false)
+        {
+            ReportDiagnostic(diag);
+            return 1;
+        }
+        else if (sLex == false && sOutputPreprocess == true)
+        {
+            ReportPreprocess(pp);
+            return 0;
+        }
+
+        if (sPreprocessOnly == true)
+        {
+            return 0;
+        }
+
+        if (lex.LexString(pp.GetOutput(), true) == false)
+        {
+            ReportDiagnostic(diag);
+            return 1;
+        }
+        else if (sLex == true && sOutputPreprocess == true)
+        {
+            ReportLex(lex);
+            return 0;
+        }
+
+        Parser parser { diag, pp.GetSymbolTable() };
         if (parser.ParseInput(lex.GetTokens()) == false)
         {
             ReportDiagnostic(diag);

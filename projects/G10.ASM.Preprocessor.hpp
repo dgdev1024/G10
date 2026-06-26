@@ -16,6 +16,13 @@
 
 namespace G10::ASM
 {
+    struct PreprocessorSymbol;
+
+    using PreprocessorSymbolTable = std::unordered_map<
+        std::string, 
+        PreprocessorSymbol
+    >;
+
     using PreprocessorMacroArgument = std::variant<
         std::monostate,
         PreprocessorValue,
@@ -102,6 +109,11 @@ namespace G10::ASM
         auto SetRecursionDepthLimit (std::size_t pRecursionDepthLimit) -> void;
         auto SetIncludeDirectories (const std::vector<std::string>& pIncludeDirs) -> void;
         auto SetDefines (const stx::dictionary<std::string>& pDefines) -> bool;
+
+    public: // Methods - Accessors *********************************************
+
+        auto GetSymbolTable () const -> const PreprocessorSymbolTable&
+            { return mSymbols; }
 
     private: // Methods - Preprocess *******************************************
 
@@ -236,7 +248,7 @@ namespace G10::ASM
         bool                mPassthroughExpr            { false };
 
         std::vector<fs::path> mIncludeDirs {};
-        std::unordered_map<std::string, PreprocessorSymbol> mSymbols {};
+        PreprocessorSymbolTable mSymbols {};
         std::unordered_map<std::string, PreprocessorSnippet> mSnippets {};
         std::unordered_map<std::string, PreprocessorMacro> mMacros {};
         std::unordered_set<std::string> mOnceFiles {};

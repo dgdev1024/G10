@@ -131,6 +131,28 @@ namespace G10::ASM
         inline auto GetString () const -> const PreprocessorString*
             { return Get<PreprocessorString>(); }
 
+        inline auto EmitInteger (const std::uint32_t& pDefault = 0) 
+            const -> std::uint32_t
+        {
+            if (auto i = GetInteger())
+                { return static_cast<std::uint32_t>(*i & 0xFFFFFFFF); }
+            else if (auto fp = GetFixedPoint())
+                { return fp->Correct().GetUnsignedInteger(); }
+            else return pDefault;
+        }
+
+        inline auto EmitString (const std::string& pDefault = {}) 
+            const -> std::string
+        {
+            if (auto s = GetString())
+                { return *s; }
+            else if (auto i = GetInteger())
+                { return std::to_string(static_cast<std::uint32_t>(*i & 0xFFFFFFFF)); }
+            else if (auto fp = GetFixedPoint())
+                { return std::to_string(fp->Correct().GetUnsignedInteger()); }
+            else return pDefault;
+        }
+
         template <PreprocessorValueTypename T>
         inline auto GetOr (const T& pDefault = {}) const -> T
         {
