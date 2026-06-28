@@ -123,15 +123,18 @@ namespace G10::ASM
 
         // GBZ80-Style Registers
         { "A",    Keyword { CPU::Register::L0  } },
+        { "F",    Keyword { CPU::Register::H0  } },
         { "B",    Keyword { CPU::Register::H1  } },
         { "C",    Keyword { CPU::Register::L1  } },
         { "D",    Keyword { CPU::Register::H2  } },
         { "E",    Keyword { CPU::Register::L2  } },
         { "H",    Keyword { CPU::Register::H3  } },
         { "L",    Keyword { CPU::Register::L3  } },
+        { "AF",   Keyword { CPU::Register::W0  } },
         { "BC",   Keyword { CPU::Register::W1  } },
         { "DE",   Keyword { CPU::Register::W2  } },
         { "HL",   Keyword { CPU::Register::W3  } },
+        { "AFP",  Keyword { CPU::Register::D0  } },
         { "BCP",  Keyword { CPU::Register::D1  } },
         { "DEP",  Keyword { CPU::Register::D2  } },
         { "HLP",  Keyword { CPU::Register::D3  } },
