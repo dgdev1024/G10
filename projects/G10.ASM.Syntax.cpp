@@ -84,14 +84,22 @@ namespace G10::ASM
 
     auto CharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
     {
-        return std::format(
+        std::string str = std::format(
             "{0}CharmapDirective:\n"
-            "{1}"
-            "{2}",
+            "'{1}'\n",
             std::string(pIndent * 2, ' '),
-            mString ? mString->Stringify(pIndent + 2) : "",
-            mInteger ? mInteger->Stringify(pIndent + 2) : ""
+            mString ? mString->Stringify(pIndent + 2) : ""
         );
+
+        if (!mIntegers.empty())
+        {
+            for (const auto& integer : mIntegers)
+            {
+                str += integer->Stringify(pIndent + 2) + " ";
+            }
+        }
+
+        return str;
     }
 
     auto NewCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string

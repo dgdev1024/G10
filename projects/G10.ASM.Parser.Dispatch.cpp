@@ -84,16 +84,29 @@ namespace G10::ASM
             return false;
         }
 
-        auto byte = EvaluateIntegerExpression(pLocation, cursor);
-        if (!byte)
+        stx::sptr_vector<IntegerExpressionNode> mIntegers {};
+        while (cursor.IsAtEnd() == false)
         {
-            mDiag.ReportError(pLocation,
-                "Expected integer in '.CHARMAP' directive.");
-            return false;
+            auto integer = EvaluateIntegerExpression(pLocation, cursor);
+            if (!integer)
+            {
+                mDiag.ReportError(pLocation,
+                    "Expected integer in '.CHARMAP' directive.");
+                return false;
+            }
+            mIntegers.push_back(integer);
+
+            if (cursor.IsAtEnd() == false &&
+                !cursor.ExpectNextToken(TokenType::Comma))
+            {
+                mDiag.ReportError(pLocation,
+                    "Expected comma or end of line in '.CHARMAP' directive.");
+                return false;
+            }
         }
 
         node->mString = character;
-        node->mInteger = byte;
+        node->mIntegers = std::move(mIntegers);
         node->mLocation = pLocation;
         mOutput.mNodes.push_back(node);
         return true;

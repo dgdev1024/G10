@@ -116,7 +116,7 @@ namespace G10::ASM
     struct G10_API CharmapDirectiveNode final : DirectiveNode
     {
         std::shared_ptr<StringExpressionNode> mString {};
-        std::shared_ptr<IntegerExpressionNode> mInteger {};
+        stx::sptr_vector<IntegerExpressionNode> mIntegers {};
 
     public:
         auto Stringify (std::size_t pIndent = 0) const -> std::string override;

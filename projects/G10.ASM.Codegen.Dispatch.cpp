@@ -61,7 +61,12 @@ namespace G10::ASM
     auto Codegen::DispatchCharmapDirective (const CharmapDirectiveNode& pNode) -> bool
     {
         auto& activeCharmap = mCharmaps[mActiveCharmap];
-        activeCharmap[pNode.mString->mValue] = (pNode.mInteger->mValue & 0xFF);
+        // activeCharmap[pNode.mString->mValue] = (pNode.mInteger->mValue & 0xFF);
+        for (const auto& integer : pNode.mIntegers)
+        {
+            activeCharmap[pNode.mString->mValue].push_back(integer->mValue & 0xFF);
+        }
+
         return true;
     }
 

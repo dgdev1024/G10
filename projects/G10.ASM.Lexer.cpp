@@ -200,6 +200,7 @@ namespace G10::ASM
             mSourceChar == '}' ||
             mSourceChar == ':' ||
             mSourceChar == '@' ||
+            mSourceChar == '#' ||
             mSourceChar == '?' ||
             mSourceChar == '\"'
         )
@@ -269,6 +270,21 @@ namespace G10::ASM
                 {
                     mDiag.ReportError(mLocation,
                         "'?' in identifer encountered out of place.");
+                    return std::nullopt;
+                }
+            }
+            else if (mSourceChar == '#')
+            {
+                if (mSecondPass == true || interpolationDepth == 0)
+                    { break; }
+
+                if (
+                    interpolationDepth == 0 ||
+                    lexeme.back() != '@'
+                )
+                {
+                    mDiag.ReportError(mLocation,
+                        "'#' in identifer encountered out of place.");
                     return std::nullopt;
                 }
             }
@@ -342,7 +358,8 @@ namespace G10::ASM
         while (
             std::isalnum(mSourceChar) ||
             mSourceChar == '_' ||
-            mSourceChar == '?'
+            mSourceChar == '?' ||
+            mSourceChar == '#'
         )
         {
             if (mSourceChar == '?')
@@ -351,6 +368,17 @@ namespace G10::ASM
                 {
                     mDiag.ReportError(mLocation,
                         "'?' must be the only character in a unique placeholder parameter.");
+                    return std::nullopt;
+                }
+
+                isUnique = true;
+            }
+            else if (mSourceChar == '#')
+            {
+                if (lexeme.empty() == false)
+                {
+                    mDiag.ReportError(mLocation,
+                        "'#' must be the only character in a unique argument string parameter.");
                     return std::nullopt;
                 }
 

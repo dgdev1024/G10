@@ -433,7 +433,11 @@ namespace G10::ASM
                     // Important: `ch` is not always one character!
                     if (str.compare(0, ch.length(), ch) == 0)
                     {
-                        view.push_byte(code);
+                        for (const auto c : code)
+                        {
+                            view.push_byte(c);
+                        }
+
                         str.erase(0, ch.length());
                         found = true;
                         break;

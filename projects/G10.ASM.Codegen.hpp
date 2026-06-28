@@ -16,7 +16,7 @@
 
 namespace G10::ASM
 {
-    using Charmap = std::unordered_map<std::string, std::uint8_t>;
+    using Charmap = std::unordered_map<std::string, std::vector<std::uint8_t>>;
 }
 
 // Constants & Enumerations ****************************************************

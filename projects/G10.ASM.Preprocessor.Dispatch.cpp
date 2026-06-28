@@ -154,8 +154,32 @@ namespace G10::ASM
         }
         else if (lexeme == "?")
         {
-            PreprocessorValue val { macro.mInvocationCount };
-            EmitValue(val);
+            arg = PreprocessorValue { macro.mInvocationCount };
+        }
+        else if (lexeme == "#")
+        {
+            std::string argString = "";
+            for (std::size_t i = 0; i < call.mArguments.size(); ++i)
+            {
+                const auto& arg = call.mArguments[i];
+                if (std::holds_alternative<PreprocessorValue>(arg))
+                {
+                    argString += std::get_if<PreprocessorValue>(&arg)->EmitString();
+                }
+                else if (std::holds_alternative<TokenSlice>(arg))
+                {
+                    for (const auto& tk : *std::get_if<TokenSlice>(&arg))
+                    {   
+                        argString += tk.Stringify().value_or("") + " ";
+                    }
+                }
+                else continue;
+
+                if (i + 1 < call.mArguments.size())
+                    { argString += ", "; }
+            }
+
+            arg = PreprocessorValue { PreprocessorString { argString } };
         }
         else
         {

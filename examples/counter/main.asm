@@ -1,11 +1,9 @@
 
-.charmap "Hello", 0x92
-.charmap ", ", 0x03
-.charmap "World!", 0x17
+.charmap "&euro;", 0xAC, 0x20
 
 .section "other stuff", data
     bug: .dword 42
-    test: .string "Hello, World!"
+    test: .string "&euro;"
 
 .section "main program", code
     main::
