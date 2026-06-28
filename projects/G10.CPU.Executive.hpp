@@ -123,8 +123,8 @@ namespace G10::CPU
         static auto ExecuteINT_XY (Core& pCore, const Instruction& pInst) -> bool;
         static auto ExecuteRET_X (Core& pCore, const Instruction& pInst) -> bool;
         static auto ExecuteRETI (Core& pCore, const Instruction& pInst) -> bool;
-        static auto ExecuteMFI_LY (Core& pCore, const Instruction& pInst) -> bool;
-        static auto ExecuteMFO_LX (Core& pCore, const Instruction& pInst) -> bool;
+        static auto ExecuteMFI_HY (Core& pCore, const Instruction& pInst) -> bool;
+        static auto ExecuteMFO_HX (Core& pCore, const Instruction& pInst) -> bool;
         static auto ExecuteADD_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool;
         static auto ExecuteADD_LX_LY (Core& pCore, const Instruction& pInst) -> bool;
         static auto ExecuteADD_LX_pDY (Core& pCore, const Instruction& pInst) -> bool;

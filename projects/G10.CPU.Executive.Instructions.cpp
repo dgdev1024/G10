@@ -659,20 +659,20 @@ namespace G10::CPU
         return good;
     }
 
-    auto Executive::ExecuteMFI_LY (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteMFI_HY (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t fr = 0;
         return
-            pCore.ReadRegisterLB(pInst.mParamY, fr) &&
+            pCore.ReadRegisterHB(pInst.mParamY, fr) &&
             pCore.WriteFlagsRegister(fr);
     }
 
-    auto Executive::ExecuteMFO_LX (Core& pCore, const Instruction& pInst) -> bool
+    auto Executive::ExecuteMFO_HX (Core& pCore, const Instruction& pInst) -> bool
     {
         std::uint8_t fr = 0;
         return
             pCore.ReadFlagsRegister(fr) &&
-            pCore.WriteRegisterLB(pInst.mParamX, fr);
+            pCore.WriteRegisterHB(pInst.mParamX, fr);
     }
 
     auto Executive::ExecuteADD_LX_IMM8 (Core& pCore, const Instruction& pInst) -> bool

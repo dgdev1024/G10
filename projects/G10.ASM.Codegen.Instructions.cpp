@@ -1668,8 +1668,8 @@ namespace G10::ASM
     auto Codegen::DispatchMFI (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x4E0Y MFI LY`
-        // - Moves byte register `LY` into the Flags Register.
+        // `0x4E0Y MFI HY`
+        // - Moves byte register `HY` into the Flags Register.
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
         {
@@ -1684,10 +1684,10 @@ namespace G10::ASM
             const auto regUnder1 = std::to_underlying(reg1->second);
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.MFI' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a high byte register.");
                 return false;
             }
             
@@ -1704,8 +1704,8 @@ namespace G10::ASM
     auto Codegen::DispatchMFO (const InstructionStatementNode& pNode,
         ObjectSectionContext& pCtx) -> bool
     {
-        // `0x4FX0 MFO LX`
-        // - Moves the Flags Register's value into register `LX`
+        // `0x4FX0 MFO HX`
+        // - Moves the Flags Register's value into register `HX`
         // - 1 operand.
         if (pNode.mOperands.size() != 1)
         {
@@ -1721,10 +1721,10 @@ namespace G10::ASM
             const auto regClass1 = static_cast<CPU::RegisterAccess>(regUnder1 & 0xF0);
             const auto regIndex1 = static_cast<std::uint8_t>(regUnder1 & 0x0F);
 
-            if (regClass1 != CPU::RegisterAccess::LowByte)
+            if (regClass1 != CPU::RegisterAccess::HighByte)
             {
                 mDiag.ReportError(pNode.mLocation, "'.MFO' Instruction: "
-                    "Expected a low byte register.");
+                    "Expected a high byte register.");
                 return false;
             }
 
