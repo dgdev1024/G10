@@ -29,10 +29,30 @@ namespace G10::ASM
         {
             mOutput += std::to_string(pToken.mInteger.value_or(0) & 0xFFFFFFFF) + ' ';
         }
-        else if (const auto str = pToken.Stringify())
+        else if (auto str = pToken.Stringify())
         {
             if (pToken.mType == TokenType::StringLiteral)
-                { mOutput += std::format("\"{}\" ", *str); }
+            {
+                // Output the string, making sure the following characters are
+                // escaped for the second-pass lexer:
+                // - `"`, `\`
+                mOutput += "\"";
+                for (const auto c : *str)
+                {
+                    switch (c)
+                    {
+                        case '\"': 
+                            mOutput += "\\\"";
+                            break;
+                        case '\\':
+                            mOutput += "\\\\";
+                            break;
+                        default:
+                            mOutput += c;
+                    }
+                }
+                mOutput += "\" ";
+            }
             else
                 { mOutput += *str + ' '; }
         }
@@ -45,6 +65,23 @@ namespace G10::ASM
         else if (const auto i = pValue.GetInteger())
             { mOutput += std::to_string(static_cast<std::uint32_t>(*i & 0xFFFFFFFF)) + " "; }
         else if (const auto str = pValue.GetString())
-            { mOutput += std::format("\"{}\" ", *str); }
+        {
+            mOutput += "\"";
+            for (const auto c : *str)
+            {
+                switch (c)
+                {
+                    case '\"': 
+                        mOutput += "\\\"";
+                        break;
+                    case '\\':
+                        mOutput += "\\\\";
+                        break;
+                    default:
+                        mOutput += c;
+                }
+            }
+            mOutput += "\" ";
+        }
     }
 }

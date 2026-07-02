@@ -136,7 +136,7 @@ namespace G10::ASM
                     mInteger.value() <= 0xFFFFFFFF;
             case TokenType::StringLiteral: {
                 if (const auto str = GetLiteral())
-                    { return str->empty() == false; }
+                    { /* debug("StringLiteral: '{}'", *str); */ return str->empty() == false; }
                 else
                     { return false; }
             } break;

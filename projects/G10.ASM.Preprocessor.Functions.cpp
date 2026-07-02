@@ -736,6 +736,14 @@ namespace G10::ASM
                         pCtx.mDiag.ReportError("Invalid stop argument.");
                         return {};
                     }
+
+                    // debug("STRSLICE('{}', {}, {}) = '{}'",
+                    //     *arg1,
+                    //     *arg2,
+                    //     *arg3,
+                    //     arg1->substr(*arg2, *arg3 - *arg2)
+                    // );
+
                     return PreprocessorString { arg1->substr(*arg2, *arg3 - *arg2) };
                 }
                 else

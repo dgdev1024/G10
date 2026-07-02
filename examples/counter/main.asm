@@ -1,4 +1,5 @@
 
+.newcharmap "test"
 .charmap "&euro;", 0xAC, 0x20
 
 .macro test

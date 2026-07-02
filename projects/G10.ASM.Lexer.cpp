@@ -431,7 +431,9 @@ namespace G10::ASM
                 if (escape == false)
                     { break; }
                 else
-                    { escape = false; }
+                { 
+                    escape = false; 
+                }
             }
             else if (
                 mSecondPass == false && 
@@ -468,6 +470,8 @@ namespace G10::ASM
             lexeme += mSourceChar;
             Next();
         }
+
+        // debug("Second Pass: {} | Lexeme: '{}'", mSecondPass, lexeme);
 
         if (mSourceChar != '\"')
         {
