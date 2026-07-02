@@ -26,7 +26,7 @@ namespace G10::ASM
     using PreprocessorMacroArgument = std::variant<
         std::monostate,
         PreprocessorValue,
-        TokenSlice
+        TokenDeepSlice
     >;
 }
 

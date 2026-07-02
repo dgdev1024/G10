@@ -20,7 +20,7 @@ namespace G10::ASM
 
         // for (const auto& tk : exprSlice)
         // {
-        //     debug(" - Token: '{}' '{}', '{}' ({})", 
+        //     // debug(" - Token: '{}' '{}', '{}' ({})", 
         //         tk.StringifyGroup(),
         //         tk.StringifyType(),
         //         tk.Stringify().value_or(""),
@@ -260,6 +260,13 @@ namespace G10::ASM
 
     auto Preprocessor::EvaluatePrimary (TokenCursor& pCursor) -> PreprocessorValue
     {
+        if (pCursor.IsEmpty() == true)
+        {
+            mDiag.ReportError("Expression received empty token slice.");
+            mPendingStatus = PreprocessStatus::Error;
+            return {};
+        }
+
         const auto& token = pCursor.GetNextToken();
         if (pCursor.IsAtEnd() == true)
         {
@@ -345,10 +352,13 @@ namespace G10::ASM
 
             pCursor.Skip();
             auto lexeme = token.Stringify();
+
             if (lexeme.has_value() == true)
             {
                 auto& call = mMacroCallStack.back();
                 const auto& macro = *call.mMacro;
+
+                // debug("Check for argument name '{}' in call to macro '{}'.", lexeme.value_or(""), macro.mName);
 
                 PreprocessorMacroArgument arg {};
                 if (token.HasInteger() == true)
@@ -384,9 +394,9 @@ namespace G10::ASM
                         {
                             argString += std::get_if<PreprocessorValue>(&arg)->EmitString();
                         }
-                        else if (std::holds_alternative<TokenSlice>(arg))
+                        else if (std::holds_alternative<TokenDeepSlice>(arg))
                         {
-                            for (const auto& tk : *std::get_if<TokenSlice>(&arg))
+                            for (const auto& tk : *std::get_if<TokenDeepSlice>(&arg))
                             {   
                                 argString += tk.Stringify().value_or("") + " ";
                             }
@@ -432,9 +442,9 @@ namespace G10::ASM
                 {
                     return (*std::get_if<PreprocessorValue>(&arg));
                 }
-                else if (std::holds_alternative<TokenSlice>(arg))
+                else if (std::holds_alternative<TokenDeepSlice>(arg))
                 {
-                    auto slice = std::get_if<TokenSlice>(&arg);
+                    auto slice = std::get_if<TokenDeepSlice>(&arg);
                     TokenCursor cursor { *slice };
 
                     auto val = CollectAndEvaluate(cursor);
@@ -506,11 +516,6 @@ namespace G10::ASM
                 }
             }
 
-            mDiag.ReportError(token.mLocation,
-                "Encountered unexpected '{}' token: '{}'.",
-                token.StringifyGroup(),
-                token.StringifyType());
-            mPendingStatus = PreprocessStatus::Error;
             return {};
         }
         else

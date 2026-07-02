@@ -275,18 +275,18 @@ namespace G10::ASM
             }
             else if (mSourceChar == '#')
             {
-                if (mSecondPass == true || interpolationDepth == 0)
-                    { break; }
+                // if (mSecondPass == true || interpolationDepth == 0)
+                //     { break; }
 
-                if (
-                    interpolationDepth == 0 ||
-                    lexeme.back() != '@'
-                )
-                {
-                    mDiag.ReportError(mLocation,
-                        "'#' in identifer encountered out of place.");
-                    return std::nullopt;
-                }
+                // if (
+                //     interpolationDepth == 0 ||
+                //     lexeme.back() != '@'
+                // )
+                // {
+                //     mDiag.ReportError(mLocation,
+                //         "'#' in identifer encountered out of place.");
+                //     return std::nullopt;
+                // }
             }
             else if (mSourceChar == '\"')
             {

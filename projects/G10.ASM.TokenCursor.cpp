@@ -38,6 +38,9 @@ namespace G10::ASM
     auto TokenCursor::ResetIndex () -> void
         { mIndex = 0; }
 
+    auto TokenCursor::IsEmpty () const -> bool
+        { return mSlice.empty(); }
+
     auto TokenCursor::IsAtEnd () const -> bool
         { return (mIndex >= mSlice.size()); }
 

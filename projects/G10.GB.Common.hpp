@@ -30,6 +30,8 @@ namespace G10::GB
             kMemOamEndAddr              = 0x8000FE9F,
             kMemWaveRamStartAddr        = 0x8000FF30,
             kMemWaveRamEndAddr          = 0x8000FF3F,
+            kMemWavePortStartAddr       = 0xFFFFFFE0,
+            kMemWavePortEndAddr         = 0xFFFFFFEF,
         kMemSpecialRamEndAddr           = 0x9FFFFFFF,
         kMemGeneralRamStartAddr         = 0xA0000000,
             kMemWorkRamStartAddr        = 0xA0000000,

@@ -104,6 +104,20 @@ namespace G10::ASM
             return DispatchMacroCall(pCursor, pToken.mLocation,
                 macroFindIt->second);
         }
+        else if (auto snippetFindIt = mSnippets.find(*lexeme);
+                 snippetFindIt != mSnippets.end())
+        {
+            // debug("Encountered dispatched snippet: '{}'", *lexeme);
+            auto status = Preprocess(snippetFindIt->second.mBody);
+            if (status == PreprocessStatus::Error)
+            {
+                mDiag.ReportInfo(pToken.mLocation,
+                    " - In expansion of snippet: '{}'", *lexeme);
+                return false;
+            }
+
+            return true;
+        }
 
         // auto val = EvaluateSymbol(*lexeme);
         // if (val.IsUndefined() == false)
@@ -166,9 +180,9 @@ namespace G10::ASM
                 {
                     argString += std::get_if<PreprocessorValue>(&arg)->EmitString();
                 }
-                else if (std::holds_alternative<TokenSlice>(arg))
+                else if (std::holds_alternative<TokenDeepSlice>(arg))
                 {
-                    for (const auto& tk : *std::get_if<TokenSlice>(&arg))
+                    for (const auto& tk : *std::get_if<TokenDeepSlice>(&arg))
                     {   
                         argString += tk.Stringify().value_or("") + " ";
                     }
@@ -212,10 +226,10 @@ namespace G10::ASM
         {
             return DispatchPassthrough(pCursor, pToken);
         }
-        else if (std::holds_alternative<TokenSlice>(arg))
+        else if (std::holds_alternative<TokenDeepSlice>(arg))
         {
             pCursor.Skip();
-            TokenCursor cursor { *std::get_if<TokenSlice>(&arg) };
+            TokenCursor cursor { *std::get_if<TokenDeepSlice>(&arg) };
             while (cursor.IsAtEnd() == false)
             {
                 const auto& tk = cursor.GetNextToken();
@@ -260,7 +274,7 @@ namespace G10::ASM
     }
 }
 
-// Private Methods - Dispatch - Print & Debug **********************************
+// Private Methods - Dispatch - Print & // Debug **********************************
 
 namespace G10::ASM
 {
@@ -530,6 +544,8 @@ namespace G10::ASM
             };
         }
 
+        // debug("Defined variable '{}' = {}", *nameLexeme, mSymbols[*nameLexeme].mValue.EmitString());
+
         return true;
     }
 
@@ -613,6 +629,9 @@ namespace G10::ASM
             .mIsConstant    = true,
             .mLocation      = pLocation
         };
+
+        debug("Defined constant '{}' = {}", *nameLexeme, exprValue.EmitString());
+
         return true;
     }
 }
@@ -1224,42 +1243,71 @@ namespace G10::ASM
             mDiag.ReportError(pLocation,
                 "Exceeded the recursion depth limit of '{}'.", mLimitRecursionDepth);
             return false;
-        } else { mRecursionDepth++; }
+        }
 
-        // 1. Collect the arguments being passed into the macro.
+        // 1. Collect the arguments being passed into the macro, then parse and
+        //    evaluate them.
         auto argSlice = DeepSlice(pCursor.CollectLine());
-        
-        // 2. Push the macro call into the call stack, then parse the arguments
-        // list.
-        auto& call = mMacroCallStack.emplace_back(PreprocessorMacroCall {});
-        call.mMacro = pMacro;
-        call.mLocation = pLocation;
-        
         TokenCursor argCursor { argSlice };
+        std::vector<PreprocessorMacroArgument> argsParsed {};
+        std::vector<std::vector<Token>> deepSlices {};
         while (argCursor.IsAtEnd() == false)
         {
             auto index = argCursor.GetIndex();
             auto argValue = EvaluateExpression(argCursor);
             if (argValue.IsUndefined() == false)
-                { call.mAllArguments.push_back(argValue); }
+                { argsParsed.push_back(argValue); }
             else
             {
                 argCursor.SetIndex(index);
-                auto slice = argCursor.CollectUntil(TokenType::Comma);
-                call.mAllArguments.push_back(slice);
+                TokenDeepSlice slice { std::from_range, argCursor.CollectUntil(TokenType::Comma) };
+                for (auto& tk : slice)
+                {
+                    switch (tk.mType)
+                    {
+                        case TokenType::Identifier: {
+                            auto interpolate = InterpolateIdentifier(pLocation,
+                                tk.Stringify().value_or(""));
+                            if (interpolate.has_value())
+                                { tk.mContents = *interpolate; }
+                        } break;
+                        default: break;
+                    }
+                }
+
+                argsParsed.push_back(std::move(slice));
             }
 
             if (argCursor.ExpectNextToken(TokenType::Comma).has_value() == false)
                 { break; }
         }
 
-        if (call.mAllArguments.size() < pMacro.mNamedParameters.size())
+        if (argsParsed.size() < pMacro.mNamedParameters.size())
         {
             mDiag.ReportError(pLocation,
                 "Not enough arguments to macro '{}'.", pMacro.mName);
             return false;
         }
 
+        // debug("Calling macro '{}' with arguments:", pMacro.mName);
+        for (const auto& arg : argsParsed)
+        {
+            if (std::holds_alternative<PreprocessorValue>(arg))
+            {
+                // debug("  - {}", std::get<PreprocessorValue>(arg).EmitString());
+            }
+            else for (const auto& tk : std::get<TokenDeepSlice>(arg))
+            {
+                // debug("  - {}", tk.Stringify().value_or(""));
+            }
+        }
+
+        // 2. Push the macro call into the call stack.
+        mRecursionDepth++;
+        auto& call = mMacroCallStack.emplace_back(PreprocessorMacroCall {});
+        call.mMacro = pMacro;
+        call.mLocation = pLocation;
+        call.mAllArguments = std::move(argsParsed);
         call.mArguments.assign_range(call.mAllArguments);
         call.mMacro->mInvocationCount++;
         auto status = Preprocess(call.mMacro->mBody);
@@ -1372,7 +1420,7 @@ namespace G10::ASM
         // file to include. Resolve that path relative to this token's source
         // location, and ensure it exists.
         auto pathString = fs::path(*fileExpr.GetString());
-        auto resolved = NormalizePath(pLocation.mPath.parent_path() / pathString);
+        auto resolved = NormalizePath(fs::path(pLocation.mPath).parent_path() / pathString);
         bool exists = fs::exists(resolved);
         if (exists == false)
         {
@@ -1398,6 +1446,8 @@ namespace G10::ASM
         // 3. If the file was marked 'once' and already included, skip it.
         if (mOnceFiles.contains(resolved.string()) == true)
             { return true; }
+
+        // debug("Including '{}'", resolved.string());
 
         // 4. Check for the include depth limit.
         if (mIncludeDepth >= mLimitIncludeDepth)

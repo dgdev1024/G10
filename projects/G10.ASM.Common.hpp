@@ -224,9 +224,9 @@ namespace G10::ASM
 {
     struct SourceLocation final
     {
-        fs::path    mPath { "" };
-        std::size_t mLine { 1 };
-        std::size_t mColumn { 1 };
+        std::string     mPath { "" };
+        std::size_t     mLine { 1 };
+        std::size_t     mColumn { 1 };
 
     public: // Methods *********************************************************
 
@@ -235,11 +235,11 @@ namespace G10::ASM
             if (mPath.empty() == true)
                 { return ""; }
             else if (mLine > 0 && mColumn > 0)
-                { return std::format("{}:{}:{}: ", mPath.string(), mLine, mColumn); }
+                { return std::format("{}:{}:{}: ", mPath, mLine, mColumn); }
             else if (mLine > 0)
-                { return std::format("{}:{}: ", mPath.string(), mLine); }
+                { return std::format("{}:{}: ", mPath, mLine); }
             else
-                { return std::format("{}: ", mPath.string()); }
+                { return std::format("{}: ", mPath); }
         }
 
     };

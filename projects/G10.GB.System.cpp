@@ -105,6 +105,12 @@ namespace G10::GB
             if (mAPU.ReadWaveRAM(pAddress - kMemWaveRamStartAddr, pDataOut) == false)
                 { pDataOut = 0xFF; }
         }
+        else if (pAddress >= kMemWavePortStartAddr &&
+                 pAddress <= kMemWavePortEndAddr)
+        {
+            if (mAPU.ReadWaveRAM(pAddress - kMemWavePortStartAddr, pDataOut) == false)
+                { pDataOut = 0xFF; }
+        }
         else if (pAddress >= kMemWorkRamStartAddr &&
                  pAddress <= kMemWorkRamEndAddr)
         {
@@ -231,6 +237,9 @@ namespace G10::GB
         else if (pAddress >= kMemWaveRamStartAddr &&
                  pAddress <= kMemWaveRamEndAddr)
             { mAPU.WriteWaveRAM(pAddress - kMemWaveRamStartAddr, pDataIn); }
+        else if (pAddress >= kMemWavePortStartAddr &&
+                 pAddress <= kMemWavePortEndAddr)
+            { mAPU.WriteWaveRAM(pAddress - kMemWavePortStartAddr, pDataIn); }
         else if (pAddress >= kMemWorkRamStartAddr &&
                  pAddress <= kMemWorkRamEndAddr)
             { mRAM.WriteWorkRAM(pAddress - kMemWorkRamStartAddr, pDataIn); }

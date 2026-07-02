@@ -15,6 +15,7 @@
 namespace G10::ASM
 {
     using TokenSlice = std::span<Token>;
+    using TokenDeepSlice = std::vector<Token>;
 }
 
 // Classes *********************************************************************
@@ -34,6 +35,7 @@ namespace G10::ASM
         auto GetIndex () const -> std::size_t;
         auto SetIndex (const std::size_t pIndex) -> void;
         auto ResetIndex () -> void;
+        auto IsEmpty() const -> bool;
         auto IsAtEnd () const -> bool;
         auto GetNextToken (bool pAdvanceAfter = false) -> const Token&;
         auto ExpectNextToken (TokenType pType, bool pAdvanceAfter = true)
