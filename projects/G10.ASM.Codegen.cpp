@@ -12,11 +12,11 @@
 
 namespace G10::ASM
 {
-    Codegen::Codegen (Diagnostic& pDiag) :
-        mDiag { pDiag }
+    Codegen::Codegen (Diagnostic& pDiag, const CharmapTable& pCharmaps) :
+        mDiag { pDiag },
+        mCharmaps { pCharmaps }
     {
         mStringBuffer.emplace_back('\0');
-        mCharmaps[""] = {};
     }
 }
 
@@ -423,7 +423,7 @@ namespace G10::ASM
         
         if (pUseCharmap == true)
         {
-            const auto& activeCharmap = mCharmaps[mActiveCharmap];
+            const auto& activeCharmap = mCharmaps.at(mActiveCharmap);
             std::string str = pString;
             while (str.empty() == false)
             {
@@ -433,10 +433,12 @@ namespace G10::ASM
                     // Important: `ch` is not always one character!
                     if (str.compare(0, ch.length(), ch) == 0)
                     {
-                        for (const auto c : code)
-                        {
-                            view.push_byte(c);
-                        }
+                        if (code > 0xFFFF)
+                            { EmitDoubleWord(code & 0xFFFFFFFF); }
+                        else if (code > 0xFF)
+                            { EmitWord(code & 0xFFFF); }
+                        else
+                            { EmitByte(code & 0xFF); }
 
                         str.erase(0, ch.length());
                         found = true;

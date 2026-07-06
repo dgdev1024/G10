@@ -17,6 +17,8 @@ namespace G10::ASM
     struct CallContext final
     {
         Diagnostic& mDiag;
+        const Charmap& mCharmap;
+        const std::vector<fs::path>& mIncludeDirs;
         std::vector<PreprocessorValue> mArgs {};
 
     public:
@@ -53,6 +55,35 @@ namespace G10::ASM
             return *mArgs[pIndex].GetString();
         }
 
+        inline auto ParseStringAgainstCharmap (const std::string& pString) ->
+            std::vector<std::string>
+        {
+            std::size_t index = 0;
+            std::vector<std::string> substrings {};
+            while (index < pString.length())
+            {
+                bool found = false;
+                for (const auto& [substr, bytes] : mCharmap)
+                {
+                    if (pString.compare(index, substr.length(), substr) == 0)
+                    {
+                        substrings.emplace_back(substr);
+                        index += substr.length();
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found == false)
+                {
+                    substrings.emplace_back(pString.substr(index, 1));
+                    index++;
+                }
+            }
+
+            return substrings;
+        }
+
     };
 
     static const std::unordered_map<
@@ -60,875 +91,1169 @@ namespace G10::ASM
         std::function<PreprocessorValue(CallContext&)>
     > kBuiltinFunctions = 
     {
-        { 
-            PreprocessorFunction::HIGH,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                if ((*arg1 & 0xFFFFFFFF00000000) != 0)
-                    { return PreprocessorInteger { (*arg1 >> 32) & 0xFFFFFFFF }; }
-                else if ((*arg1 & 0xFFFF0000) != 0)
-                    { return PreprocessorInteger { (*arg1 >> 16) & 0xFFFF }; }
-                else if ((*arg1 & 0xFF00) != 0)
-                    { return PreprocessorInteger { (*arg1 >> 8) & 0xFF }; }
-                else
-                    { return PreprocessorInteger { (*arg1 >> 4) & 0xF }; }
-            }
-        },
+        // Integer Functions
         {
-            PreprocessorFunction::LOW,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            PreprocessorFunction::HIGHDWORD,
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                if ((*arg1 & 0xFFFFFFFF00000000) != 0)
-                    { return PreprocessorInteger { (*arg1 & 0xFFFFFFFF) }; }
-                else if ((*arg1 & 0xFFFF0000) != 0)
-                    { return PreprocessorInteger { (*arg1 & 0xFFFF) }; }
-                else if ((*arg1 & 0xFF00) != 0)
-                    { return PreprocessorInteger { (*arg1 & 0xFF) }; }
-                else
-                    { return PreprocessorInteger { (*arg1 & 0xF) }; }
-            }
-        },
-        {
-            PreprocessorFunction::HIDWORD,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { (*arg1 >> 32) & 0xFFFFFFFF };
-            }
-        },
-        {
-            PreprocessorFunction::LODWORD,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { *arg1 & 0xFFFFFFFF };
-            }
-        },
-        {
-            PreprocessorFunction::HIWORD,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { (*arg1 >> 16) & 0xFFFF };
-            }
-        },
-        {
-            PreprocessorFunction::LOWORD,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { *arg1 & 0xFFFF };
-            }
-        },
-        {
-            PreprocessorFunction::HIBYTE,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { (*arg1 >> 8) & 0xFF };
-            }
-        },
-        {
-            PreprocessorFunction::LOBYTE,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { *arg1 & 0xFF };
-            }
-        },
-        {
-            PreprocessorFunction::HINIBBLE,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { (*arg1 >> 4) & 0xF };
-            }
-        },
-        {
-            PreprocessorFunction::LONIBBLE,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
-                    return {};
-                }
-
-                return PreprocessorInteger { *arg1 & 0xF };
-            }
-        },
-        {
-            PreprocessorFunction::BITWIDTH,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
                     return {};
                 }
 
                 return PreprocessorInteger { 
-                    std::bit_width(static_cast<std::uint64_t>(*arg1))
+                    static_cast<std::int64_t>((n.value() & 0xFFFFFFFF00000000) >> 32) };
+            }
+        },
+        {
+            PreprocessorFunction::LOWDWORD,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(n.value() & 0xFFFFFFFF) };
+            }
+        },
+        {
+            PreprocessorFunction::HIGHWORD,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>((n.value() & 0xFFFF0000) >> 16) };
+            }
+        },
+        {
+            PreprocessorFunction::LOWWORD,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(n.value() & 0xFFFF) };
+            }
+        },
+        {
+            PreprocessorFunction::HIGHBYTE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(((n.value() & 0xFF00) >> 8)) };
+            }
+        },
+        {
+            PreprocessorFunction::LOWBYTE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(n.value() & 0xFF) };
+            }
+        },
+        {
+            PreprocessorFunction::HIGHNIBBLE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(((n.value() & 0xF0) >> 4)) };
+            }
+        },
+        {
+            PreprocessorFunction::LOWNIBBLE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(n.value() & 0x0F) };
+            }
+        },
+        {
+            PreprocessorFunction::HIGH,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(
+                        n.value() > 0xFFFFFFFF ? ((n.value() & 0xFFFFFFFF00000000) >> 32) :
+                        n.value() > 0xFFFF ? ((n.value() & 0xFFFF0000) >> 16) :
+                        n.value() > 0xFF ? ((n.value() & 0xFF00) >> 8) :
+                        ((n.value() & 0xF0) >> 4)
+                    ) 
+                };
+            }
+        },
+        {
+            PreprocessorFunction::LOW,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(
+                        n.value() > 0xFFFFFFFF ? (n.value() & 0xFFFFFFFF) :
+                        n.value() > 0xFFFF ? (n.value() & 0xFFFF) :
+                        n.value() > 0xFF ? (n.value() & 0xFF) :
+                        (n.value() & 0xF)
+                    ) 
+                };
+            }
+        },
+        {
+            PreprocessorFunction::BITWIDTH,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    std::bit_width(static_cast<std::uint64_t>(n.value())) 
                 };
             }
         },
         {
             PreprocessorFunction::TZCOUNT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetInteger(0);
-                if (arg1.has_value() == false)
+                auto n = pContext.GetInteger(0);
+                if (n.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected integer argument.");
+                    pContext.mDiag.ReportError("Expected an integer for argument #1");
                     return {};
                 }
 
                 return PreprocessorInteger { 
-                    std::countr_zero(static_cast<std::uint64_t>(*arg1))
+                    std::countr_zero(static_cast<std::uint64_t>(n.value())) 
                 };
             }
         },
+
+        // Fixed-Point Functions
         {
             PreprocessorFunction::FINT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto f = pContext.GetFixedPoint(0);
+                if (f.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorInteger { arg1->GetInteger() };
+                return PreprocessorInteger { static_cast<std::int64_t>(f->Correct().GetInteger()) };
             }
         },
         {
             PreprocessorFunction::FFRAC,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto f = pContext.GetFixedPoint(0);
+                if (f.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorInteger { arg1->GetFractional() };
+                return PreprocessorInteger { static_cast<std::int64_t>(f->Correct().GetFractional()) };
             }
         },
         {
             PreprocessorFunction::FADD,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { arg1->GetComputed() + arg2->GetComputed() };
+                return PreprocessorFixedPoint { lhs->GetComputed() + rhs->GetComputed() };
             }
         },
         {
             PreprocessorFunction::FSUB,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { arg1->GetComputed() - arg2->GetComputed() };
-            }
-        },
-        {
-            PreprocessorFunction::FMUL,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
-                    return {};
-                }
-
-                return PreprocessorFixedPoint { arg1->GetComputed() * arg2->GetComputed() };
+                return PreprocessorFixedPoint { lhs->GetComputed() - rhs->GetComputed() };
             }
         },
         {
             PreprocessorFunction::FDIV,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
-                    return {};
-                }
-                else if (arg2->GetInteger() == 0 && arg2->GetFractional() == 0)
-                {
-                    pCtx.mDiag.ReportError("Division by zero.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { arg1->GetComputed() / arg2->GetComputed() };
+                if (rhs.value().GetRaw() == 0)
+                {
+                    pContext.mDiag.ReportError("Division by zero is not allowed.");
+                    return {};
+                }
+
+                return PreprocessorFixedPoint { lhs->GetComputed() / rhs->GetComputed() };
+            }
+        },
+        {
+            PreprocessorFunction::FMUL,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
+                    return {};
+                }
+
+                return PreprocessorFixedPoint { lhs->GetComputed() * rhs->GetComputed() };
             }
         },
         {
             PreprocessorFunction::FMOD,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
-                    return {};
-                }
-                else if (arg2->GetInteger() == 0 && arg2->GetFractional() == 0)
-                {
-                    pCtx.mDiag.ReportError("Modulo by zero.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::fmod(arg1->GetComputed(), 
-                    arg2->GetComputed()) };
+                if (rhs.value().GetRaw() == 0)
+                {
+                    pContext.mDiag.ReportError("Modulo by zero is not allowed.");
+                    return {};
+                }
+
+                return PreprocessorFixedPoint { std::fmod(lhs->GetComputed(), rhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FPOW,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::pow(arg1->GetComputed(), 
-                    arg2->GetComputed()) };
+                return PreprocessorFixedPoint { std::pow(lhs->GetComputed(), rhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FSQRT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::sqrt(arg1->GetComputed()) };
+                return PreprocessorFixedPoint { std::sqrt(lhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FROOT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::pow(arg1->GetComputed(), 
-                    1.0 / arg2->GetComputed()) };
+                return PreprocessorFixedPoint { std::pow(lhs->GetComputed(), 1.0 / rhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FLOG,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected two fixed-point numbers for arguments #1 and #2");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::log(arg1->GetComputed()) / 
-                    std::log(arg2->GetComputed()) };
+                return PreprocessorFixedPoint { 
+                    std::log(lhs->GetComputed()) /
+                        std::log(rhs->GetComputed())
+                };
             }
         },
         {
             PreprocessorFunction::FLN,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::log(arg1->GetComputed()) };
+                return PreprocessorFixedPoint { std::log(lhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FROUND,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::round(arg1->GetComputed()) };
+                return PreprocessorFixedPoint { std::round(lhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FCEIL,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::ceil(arg1->GetComputed()) };
+                return PreprocessorFixedPoint { std::ceil(lhs->GetComputed()) };
             }
         },
         {
             PreprocessorFunction::FFLOOR,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { std::floor(arg1->GetComputed()) };
+                return PreprocessorFixedPoint { std::floor(lhs->GetComputed()) };
             }
         },
+
+        // Trigonometric Functions
         {
             PreprocessorFunction::FRADT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                return PreprocessorFixedPoint { arg1->GetComputed() * kTurn };
+                return PreprocessorFixedPoint { lhs->GetComputed() * kTurn };
             }
         },
         {
             PreprocessorFunction::FDEGT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                // To radians, first, then to turns.
-                double radians = arg1->GetComputed() * (std::numbers::pi / 180.0);
-                return PreprocessorFixedPoint { radians / kTurn };
+                double radians = lhs->GetComputed() * (std::numbers::pi / 180.0);
+                return PreprocessorFixedPoint { radians * kTurn };
             }
         },
         {
             PreprocessorFunction::FSIN,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                // Angle expected in turns. 1 turn = 2PI radians or 360 degrees.
                 return PreprocessorFixedPoint { 
-                    std::sin(arg1->GetComputed() * kTurn) };
+                    std::sin(lhs->GetComputed() * kTurn) };
             }
         },
         {
             PreprocessorFunction::FCOS,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                // Angle expected in turns. 1 turn = 2PI radians or 360 degrees.
                 return PreprocessorFixedPoint { 
-                    std::cos(arg1->GetComputed() * kTurn) };
+                    std::cos(lhs->GetComputed() * kTurn) };
             }
         },
         {
             PreprocessorFunction::FTAN,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
-                // Angle expected in turns. 1 turn = 2PI radians or 360 degrees.
                 return PreprocessorFixedPoint { 
-                    std::tan(arg1->GetComputed() * kTurn) };
+                    std::tan(lhs->GetComputed() * kTurn) };
             }
         },
         {
             PreprocessorFunction::FASIN,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
                 return PreprocessorFixedPoint { 
-                    std::asin(arg1->GetComputed()) / kTurn };
+                    std::asin(lhs->GetComputed()) / kTurn };
             }
         },
         {
             PreprocessorFunction::FACOS,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
                 return PreprocessorFixedPoint { 
-                    std::acos(arg1->GetComputed()) / kTurn };
+                    std::acos(lhs->GetComputed()) / kTurn };
             }
         },
         {
             PreprocessorFunction::FATAN,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                if (arg1.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+
+                if (lhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point argument.");
+                    pContext.mDiag.ReportError("Expected a fixed-point number for argument #1");
                     return {};
                 }
 
                 return PreprocessorFixedPoint { 
-                    std::atan(arg1->GetComputed()) / kTurn };
+                    std::atan(lhs->GetComputed()) / kTurn };
             }
         },
         {
             PreprocessorFunction::FATAN2,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetFixedPoint(0);
-                auto arg2 = pCtx.GetFixedPoint(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                auto lhs = pContext.GetFixedPoint(0);
+                auto rhs = pContext.GetFixedPoint(1);
+
+                if (lhs.has_value() == false || rhs.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected fixed-point arguments.");
+                    pContext.mDiag.ReportError("Expected fixed-point numbers for both arguments");
                     return {};
                 }
 
                 return PreprocessorFixedPoint { 
-                    std::atan2(arg1->GetComputed(), arg2->GetComputed()) / kTurn };
+                    std::atan2(lhs->GetComputed(), rhs->GetComputed()) / kTurn };
             }
         },
-        {
-            PreprocessorFunction::STRLEN,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetString(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected string argument.");
-                    return {};
-                }
 
-                return PreprocessorInteger { static_cast<std::int64_t>(arg1->length()) };
-            }
-        },
-        {
-            PreprocessorFunction::BYTELEN,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetString(0);
-                if (arg1.has_value() == false)
-                {
-                    pCtx.mDiag.ReportError("Expected string argument.");
-                    return {};
-                }
-
-                // Same as `STRLEN`, but with null terminator.
-                return PreprocessorInteger { static_cast<std::int64_t>(arg1->length()) + 1 };
-            }
-        },
+        // String Functions
         {
             PreprocessorFunction::STRCAT,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                if (arg1.has_value() == false || arg2.has_value() == false)
+                // `STRCAT(str1, str2, ...)`
+                // - Concatenates two or more strings.
+                auto str1 = pContext.GetString(0);
+                auto str2 = pContext.GetString(1);
+
+                if (str1.has_value() == false || str2.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected string arguments.");
+                    pContext.mDiag.ReportError("Expected at least two string arguments for `STRCAT`.");
                     return {};
                 }
-
-                return PreprocessorString { *arg1 + *arg2 };
-            }
-        },
-        {
-            PreprocessorFunction::STRNCAT,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                auto arg3 = pCtx.GetInteger(2);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
-                )
+                
+                std::string concat = *str1 + *str2;
+                for (std::size_t i = 2; i < pContext.mArgs.size(); ++i)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
-                    return {};
+                    auto str = pContext.GetString(i);
+                    if (str.has_value() == false)
+                    {
+                        pContext.mDiag.ReportError("Expected string argument #{} for `STRCAT`.", i + 1);
+                        return {};
+                    }
+                    concat += *str;
                 }
 
-                return PreprocessorString { *arg1 + arg2->substr(0, *arg3) };
+                return PreprocessorString { concat };
             }
         },
         {
             PreprocessorFunction::STRUPR,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                if (arg1.has_value() == false)
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected string argument.");
+                    pContext.mDiag.ReportError("Expected string argument for `STRUPR`.");
                     return {};
                 }
 
-                std::transform(arg1->begin(), arg1->end(), arg1->begin(), 
-                    ::toupper);
-                return PreprocessorString { *arg1 };
+                std::string upper = *str;
+                std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+                return PreprocessorString { upper };
             }
         },
         {
             PreprocessorFunction::STRLWR,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                if (arg1.has_value() == false)
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Expected string argument.");
+                    pContext.mDiag.ReportError("Expected string argument for `STRLWR`.");
                     return {};
                 }
 
-                std::transform(arg1->begin(), arg1->end(), arg1->begin(), 
-                    ::tolower);
-                return PreprocessorString { *arg1 };
+                std::string lower = *str;
+                std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+                return PreprocessorString { lower };
             }
         },
         {
             PreprocessorFunction::STRSLICE,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetInteger(1);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false
-                )
+                // `STRSLICE(str, start[, stop])`
+                // - Returns a substring of `str`, starting at `start` and ending
+                //   at `stop` (exclusive).
+                // - If `stop` is not specified, then the substring returned
+                //   runs to the end of `str`.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Missing or invalid required argument(s).");
+                    pContext.mDiag.ReportError("Argument #1 to `STRSLICE` must be a string.");
                     return {};
                 }
 
-                if (pCtx.mArgs.size() >= 3)
+                auto start = pContext.GetInteger(1);
+                if (start.has_value() == false)
                 {
-                    auto arg3 = pCtx.GetInteger(2);
-                    if (arg3.has_value() == false)
+                    pContext.mDiag.ReportError("Argument #2 to `STRSLICE` must be an integer.");
+                    return {};
+                }
+
+                std::size_t start_pos = *start;
+                std::size_t stop_pos = stx::npos64;
+                if (pContext.mArgs.size() >= 3)
+                {
+                    auto stop = pContext.GetInteger(2);
+                    if (stop.has_value() == false)
                     {
-                        pCtx.mDiag.ReportError("Invalid stop argument.");
+                        pContext.mDiag.ReportError("Argument #3 to `STRSLICE` must be an integer.");
                         return {};
                     }
-
-                    // debug("STRSLICE('{}', {}, {}) = '{}'",
-                    //     *arg1,
-                    //     *arg2,
-                    //     *arg3,
-                    //     arg1->substr(*arg2, *arg3 - *arg2)
-                    // );
-
-                    return PreprocessorString { arg1->substr(*arg2, *arg3 - *arg2) };
-                }
-                else
-                {
-                    return PreprocessorString { arg1->substr(*arg2) };
+                    stop_pos = *stop;
                 }
 
-                // auto arg1 = pCtx.GetString(0);
-                // auto arg2 = pCtx.GetInteger(1);
-                // auto arg3 = pCtx.GetInteger(2);
-                // if (
-                //     arg1.has_value() == false ||
-                //     arg2.has_value() == false ||
-                //     arg3.has_value() == false
-                // )
-                // {
-                //     pCtx.mDiag.ReportError("Received invalid argument(s).");
-                //     return {};
-                // }
-
-                // return PreprocessorString { arg1->substr(*arg2, *arg3) };
+                return PreprocessorString { str->substr(start_pos, stop_pos - start_pos) };
             }
         },
         {
-            PreprocessorFunction::STRREPLACE,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            PreprocessorFunction::STRSLICEC,
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                auto arg3 = pCtx.GetString(2);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
-                )
+                // `STRSLICEC(str, start[, count])`
+                // - Returns a substring of `str`, starting at `start` and ending
+                //   at `start + count` (exclusive).
+                // - If `count` is not specified, then the substring returned
+                //   runs to the end of `str`.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("Argument #1 to `STRSLICEC` must be a string.");
                     return {};
                 }
 
-                std::string result = *arg1;
-                size_t pos = result.find(*arg2);
-                if (pos != std::string::npos)
+                auto start = pContext.GetInteger(1);
+                if (start.has_value() == false)
                 {
-                    result.replace(pos, arg2->length(), *arg3);
+                    pContext.mDiag.ReportError("Argument #2 to `STRSLICEC` must be an integer.");
+                    return {};
                 }
-                return PreprocessorString { result };
+
+                std::size_t start_pos = *start;
+                std::size_t count = stx::npos64;
+                if (pContext.mArgs.size() >= 3)
+                {
+                    auto _count = pContext.GetInteger(2);
+                    if (_count.has_value() == false)
+                    {
+                        pContext.mDiag.ReportError("Argument #3 to `STRSLICEC` must be an integer.");
+                        return {};
+                    }
+                    count = *_count;
+                }
+
+                return PreprocessorString { str->substr(start_pos, count) };
+            }
+        },
+        {
+            PreprocessorFunction::STRRPL,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `STRRPL(str, old, new)`
+                // - Returns a string with all occurrences of `old` replaced by `new`.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `STRRPL` must be a string.");
+                    return {};
+                }
+
+                auto old = pContext.GetString(1);
+                if (old.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #2 to `STRRPL` must be a string.");
+                    return {};
+                }
+
+                auto _new = pContext.GetString(2);
+                if (_new.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #3 to `STRRPL` must be a string.");
+                    return {};
+                }
+                
+                std::size_t find = str->find(*old);
+                while (find != std::string::npos)
+                {
+                    str->replace(find, old->length(), *_new);
+                    find = str->find(*old, find + _new->length());
+                }
+
+                return PreprocessorString { *str };
+            }
+        },
+        {
+            PreprocessorFunction::STRCHAR,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `STRCHAR(str, idx)`
+                // - Returns the substring from `str` for the charmap entry at
+                //   index `idx` within the current charmap.
+                // - `idx` counts charmap entries, not characters.
+                // - The call context contains a const handle to the currently
+                //   selected charmap.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `STRCHAR` must be a string.");
+                    return {};
+                }
+
+                auto idx = pContext.GetInteger(1);
+                if (idx.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #2 to `STRCHAR` must be an integer.");
+                    return {};
+                }
+
+                auto substrs = pContext.ParseStringAgainstCharmap(*str);
+                if (*idx < 0 || *idx >= static_cast<std::int64_t>(substrs.size()))
+                {
+                    pContext.mDiag.ReportError("Index out of bounds for `STRCHAR`.");
+                    return {};
+                }
+
+                return PreprocessorString { substrs[*idx] };
+            }
+        },
+        {
+            PreprocessorFunction::REVCHAR,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `REVCHAR(val)`
+                // - Returns the string which is mapped to `val` within the
+                //   current charmap.
+                auto val = pContext.GetInteger(0);
+                if (val.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `REVCHAR` must be an integer.");
+                    return {};
+                }
+
+                for (const auto& [str, value] : pContext.mCharmap)
+                {
+                    if (value == *val)
+                    {
+                        return PreprocessorString { str };
+                    }
+                }
+
+                pContext.mDiag.ReportError("Value '{}' not found in charmap.", *val);
+                return {};
+            }
+        },
+        {
+            PreprocessorFunction::STRLEN,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `STRLEN(str)`
+                // - Returns the number of characters in the string `str`.
+                // - The length returned is in UTF-8 characters, excluding
+                //   the null terminator.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `STRLEN` must be a string.");
+                    return {};
+                }
+
+                std::size_t length = 0;
+                for (std::size_t i = 0; i < str->length(); )
+                {
+                    auto c = (*str)[i];
+                    if ((c & 0x80) == 0)            { i += 1; }
+                    else if ((c & 0xE0) == 0xC0)    { i += 2; }
+                    else if ((c & 0xF0) == 0xE0)    { i += 3; }
+                    else                            { i += 4; }
+                    length += 1;
+                }
+
+                return PreprocessorInteger { static_cast<std::int64_t>(length) };
             }
         },
         {
             PreprocessorFunction::STRCMP,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false
-                )
+                // `STRCMP(str1, str2)`
+                // - Compares strings `str1` and `str2`.
+                // - Comparison is performed according to the ASCII ordering
+                //   of each character.
+                auto str1 = pContext.GetString(0);
+                auto str2 = pContext.GetString(1);
+
+                if (str1.has_value() == false || str2.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("Both arguments to `STRCMP` must be strings.");
                     return {};
                 }
 
-                return PreprocessorInteger { arg1->compare(*arg2) };
+                return PreprocessorInteger { static_cast<std::int64_t>(str1->compare(*str2)) };
             }
         },
         {
             PreprocessorFunction::STRNCMP,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                auto arg3 = pCtx.GetInteger(2);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
-                )
+                // `STRNCMP(str1, str2, n)`
+                // - Compares up to `n` characters of strings `str1` and `str2`.
+                // - Comparison is performed according to the ASCII ordering of each character.
+                auto str1 = pContext.GetString(0);
+                auto str2 = pContext.GetString(1);
+                auto n = pContext.GetInteger(2);
+
+                if (str1.has_value() == false || str2.has_value() == false || n.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("All arguments to `STRNCMP` must be provided.");
                     return {};
                 }
 
-                return PreprocessorInteger { arg1->compare(0, *arg3, *arg2) };
+                if (*n < 0)
+                {
+                    pContext.mDiag.ReportError("Argument #3 to `STRNCMP` must be a non-negative integer.");
+                    return {};
+                }
+
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(
+                        str1->compare(0, static_cast<std::size_t>(*n), *str2, 0, static_cast<std::size_t>(*n))
+                    )
+                };
             }
         },
         {
             PreprocessorFunction::STRFIND,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false
-                )
+                // `STRFIND(str, substr)`
+                // - Returns the index of the first occurrence of `substr` in `str`.
+                // - If `substr` is not found, returns -1.
+                auto str = pContext.GetString(0);
+                auto substr = pContext.GetString(1);
+
+                if (str.has_value() == false || substr.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("Both arguments to `STRFIND` must be strings.");
                     return {};
                 }
 
-                size_t pos = arg1->find(*arg2);
-                if (pos == std::string::npos)
-                {
-                    return PreprocessorInteger { -1 };
-                }
-
-                return PreprocessorInteger { static_cast<int>(pos) };
-            }
-        },
-        {
-            PreprocessorFunction::STRNFIND,
-            [] (CallContext& pCtx) -> PreprocessorValue
-            {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                auto arg3 = pCtx.GetInteger(2);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
-                )
-                {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
-                    return {};
-                }
-
-                size_t pos = arg1->substr(0, *arg3).find(*arg2);
-                if (pos == std::string::npos)
-                {
-                    return PreprocessorInteger { -1 };
-                }
-
-                return PreprocessorInteger { static_cast<int>(pos) };
+                auto pos = str->find(*substr);
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(pos != std::string::npos ? pos : -1) };
             }
         },
         {
             PreprocessorFunction::STRRFIND,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false
-                )
+                // `STRRFIND(str, substr)`
+                // - Returns the index of the last occurrence of `substr` in `str`.
+                // - If `substr` is not found, returns -1.
+                auto str = pContext.GetString(0);
+                auto substr = pContext.GetString(1);
+
+                if (str.has_value() == false || substr.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("Both arguments to `STRRFIND` must be strings.");
                     return {};
                 }
 
-                size_t pos = arg1->find_last_of(*arg2);
-                if (pos == std::string::npos)
-                {
-                    return PreprocessorInteger { -1 };
-                }
-
-                return PreprocessorInteger { static_cast<int>(pos) };
+                auto pos = str->rfind(*substr);
+                return PreprocessorInteger { 
+                    static_cast<std::int64_t>(pos != std::string::npos ? pos : -1) };
             }
         },
         {
-            PreprocessorFunction::STRNRFIND,
-            [] (CallContext& pCtx) -> PreprocessorValue
+            PreprocessorFunction::BYTELEN,
+            [] (CallContext& pContext) -> PreprocessorValue
             {
-                auto arg1 = pCtx.GetString(0);
-                auto arg2 = pCtx.GetString(1);
-                auto arg3 = pCtx.GetInteger(2);
-                if (
-                    arg1.has_value() == false ||
-                    arg2.has_value() == false ||
-                    arg3.has_value() == false
-                )
+                // `BYTELEN(str)`
+                // - Returns the number of bytes in `str`.
+                // - Non-ASCII characters can be multiple bytes.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
                 {
-                    pCtx.mDiag.ReportError("Received invalid argument(s).");
+                    pContext.mDiag.ReportError("Argument #1 to `BYTELEN` must be a string.");
                     return {};
                 }
 
-                size_t pos = arg1->substr(0, *arg3).find_last_of(*arg2);
-                if (pos == std::string::npos)
+                return PreprocessorInteger { static_cast<std::int64_t>(str->length()) };
+            }
+        },
+        {
+            PreprocessorFunction::STRBYTE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `STRBYTE(str, index)`
+                // - Returns the byte at the specified index in `str`.
+                auto str = pContext.GetString(0);
+                auto index = pContext.GetInteger(1);
+
+                if (str.has_value() == false)
                 {
-                    return PreprocessorInteger { -1 };
+                    pContext.mDiag.ReportError("Argument #1 to `STRBYTE` must be a string.");
+                    return {};
+                }
+                else if (index.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #2 to `STRBYTE` must be an integer.");
+                    return {};
+                }
+                else if (*index < 0 || static_cast<std::size_t>(*index) >= str->length())
+                {
+                    pContext.mDiag.ReportError("Index out of bounds for `STRBYTE`.");
+                    return {};
                 }
 
-                return PreprocessorInteger { static_cast<int>(pos) };
+                return PreprocessorInteger { static_cast<std::int64_t>((*str)[*index]) };
+            }
+        },
+        {
+            PreprocessorFunction::INCHARMAP,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `INCHARMAP(str)`
+                // - Checks to see if `str` has an entry in the current charmap.
+                // - Returns `1` if so, `0` otherwise.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `INCHARMAP` must be a string.");
+                    return {};
+                }
+
+                auto findIt = std::find_if(
+                    pContext.mCharmap.begin(), 
+                    pContext.mCharmap.end(), 
+                    [&str] (const auto& pair) -> bool
+                    {
+                    return pair.first == *str;
+                    }
+                );
+
+                return PreprocessorInteger {
+                    (findIt != pContext.mCharmap.end() ? 1 : 0)
+                };
+            }
+        },
+        {
+            PreprocessorFunction::CHARLEN,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `CHARLEN(str)`
+                // - Returns the number of charmap entries in `str` within
+                //   the current charmap.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `CHARLEN` must be a string.");
+                    return {};
+                }
+
+                auto substrs = pContext.ParseStringAgainstCharmap(*str);
+                return PreprocessorInteger { static_cast<std::int64_t>(substrs.size()) };
+            }
+        },
+        {
+            PreprocessorFunction::CHARCMP,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `CHARCMP(str1, str2)`
+                // - Compares strings `str1` and `str2`.
+                // - Comparison is performed according to the charmap values in
+                //   each string.
+                auto str1 = pContext.GetString(0);
+                auto str2 = pContext.GetString(1);
+
+                if (str1.has_value() == false || str2.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Arguments to `CHARCMP` must be strings.");
+                    return {};
+                }
+                
+                auto parse1 = pContext.ParseStringAgainstCharmap(*str1);
+                auto parse2 = pContext.ParseStringAgainstCharmap(*str2);
+                for (std::size_t i = 0; i < std::min(parse1.size(), parse2.size()); ++i)
+                {
+                    auto findIt1 = std::find_if(
+                        pContext.mCharmap.begin(),
+                        pContext.mCharmap.end(),
+                        [&parse1, i](const auto& pair) {
+                            return pair.first == parse1[i];
+                        }
+                    );
+
+                    auto findIt2 = std::find_if(
+                        pContext.mCharmap.begin(),
+                        pContext.mCharmap.end(),
+                        [&parse2, i](const auto& pair) {
+                            return pair.first == parse2[i];
+                        }
+                    );
+
+                    if (findIt1 != pContext.mCharmap.end() && findIt2 != pContext.mCharmap.end())
+                    {
+                        for (uint8_t i = 0; i < 8; ++i)
+                        {
+                            std::uint8_t byte0 = ((findIt1->second >> (i * 8)) & 0xFF);
+                            std::uint8_t byte1 = ((findIt2->second >> (i * 8)) & 0xFF);
+                            if (byte0 < byte1)
+                                { return PreprocessorInteger { -1 }; }
+                            if (byte0 > byte1)
+                                { return PreprocessorInteger { 1 }; }
+                        }
+                        
+                        // if (findIt1->second < findIt2->second)
+                        //     { return PreprocessorInteger { -1 }; }
+                        // if (findIt1->second > findIt2->second)
+                        //     { return PreprocessorInteger { 1 }; }
+                    }
+                }
+
+                return PreprocessorInteger { 0 };
+            }
+        },
+        {
+            PreprocessorFunction::CHARSIZE,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `CHARSIZE(str)`
+                // - Returns the size in bytes of the charmap entry for `str`.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `CHARSIZE` must be a string.");
+                    return {};
+                }
+
+                auto findIt = std::find_if(
+                    pContext.mCharmap.begin(),
+                    pContext.mCharmap.end(),
+                    [&str](const auto& pair) {
+                        return pair.first == *str;
+                    }
+                );
+                if (findIt == pContext.mCharmap.end())
+                {
+                    pContext.mDiag.ReportError("Character '{}' not found in charmap.", *str);
+                    return {};
+                }
+
+                if (findIt->second > 0xFFFFFFFF) { return PreprocessorInteger { 8 }; }
+                else if (findIt->second > 0xFFFF) { return PreprocessorInteger { 4 }; }
+                else if (findIt->second > 0xFF) { return PreprocessorInteger { 2 }; }
+                else { return PreprocessorInteger { 1 }; }
+            }
+        },
+        {
+            PreprocessorFunction::CHARVAL,
+            [] (CallContext& pContext) -> PreprocessorValue
+            {
+                // `CHARVAL(str)`
+                // - Returns the value of the charmap entry for `str`.
+                auto str = pContext.GetString(0);
+                if (str.has_value() == false)
+                {
+                    pContext.mDiag.ReportError("Argument #1 to `CHARVAL` must be a string.");
+                    return {};
+                }
+
+                auto findIt = std::find_if(
+                    pContext.mCharmap.begin(),
+                    pContext.mCharmap.end(),
+                    [&str](const auto& pair) {
+                        return pair.first == *str;
+                    }
+                );
+                if (findIt == pContext.mCharmap.end())
+                {
+                    if (str->length() == 1)
+                    {
+                        return PreprocessorInteger { static_cast<std::int64_t>((*str)[0]) };
+                    }
+
+                    pContext.mDiag.ReportError("Character '{}' not found in charmap.", *str);
+                    return {};
+                }
+
+                return PreprocessorInteger { static_cast<std::int64_t>(findIt->second) };
             }
         }
     };
@@ -1014,7 +1339,7 @@ namespace G10::ASM
             return {};
         }
 
-        CallContext ctx { mDiag };
+        CallContext ctx { mDiag, mCharmaps.at(mActiveCharmap), mIncludeDirs };
         while (pCursor.IsAtEnd() == false)
         {
             const auto& lead = pCursor.GetNextToken();
@@ -1051,6 +1376,7 @@ namespace G10::ASM
             return {};
         }
 
-        return findIt->second(ctx);
+        auto result = findIt->second(ctx);
+        return result;
     }
 }

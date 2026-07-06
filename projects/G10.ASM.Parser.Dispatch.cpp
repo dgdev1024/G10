@@ -19,6 +19,11 @@ namespace G10::ASM
         {
             return DispatchDirective(pKeyword, pLocation, pCursor);
         }
+        else if (pKeyword.Is<Hint>() == true &&
+                 pKeyword.GetType<Hint>() == Hint::CM)
+        {
+            return DispatchCharmapHintDirective(pLocation, pCursor);
+        }
         else if (pKeyword.Is<CPU::InstructionType>() == true)
         {
             return DispatchInstructionStatement(pKeyword, pLocation, pCursor);
@@ -34,11 +39,6 @@ namespace G10::ASM
     {
         switch (pKeyword.GetType<AssemblerDirective>())
         {
-            case AssemblerDirective::CHARMAP:       return DispatchCharmapDirective(pLocation, pCursor);
-            case AssemblerDirective::NEWCHARMAP:    return DispatchNewCharmapDirective(pLocation, pCursor);
-            case AssemblerDirective::SETCHARMAP:    return DispatchSetCharmapDirective(pLocation, pCursor);
-            case AssemblerDirective::PUSHCHARMAP:   return DispatchPushCharmapDirective(pLocation, pCursor);
-            case AssemblerDirective::POPCHARMAP:    return DispatchPopCharmapDirective(pLocation, pCursor);
             case AssemblerDirective::BYTE:          return DispatchByteDirective(pLocation, pCursor);
             case AssemblerDirective::WORD:          return DispatchWordDirective(pLocation, pCursor);
             case AssemblerDirective::DWORD:         return DispatchDoubleWordDirective(pLocation, pCursor);
@@ -61,132 +61,6 @@ namespace G10::ASM
 
 namespace G10::ASM
 {
-    auto Parser::DispatchCharmapDirective (const SourceLocation& pLocation, 
-        TokenCursor& pCursor) -> bool
-    {
-        // Syntax: `.CHARMAP "<CHAR>", <BYTE>`
-        auto node = std::make_shared<CharmapDirectiveNode>();
-        auto slice = pCursor.CollectLine();
-        TokenCursor cursor { slice };
-
-        auto character = EvaluateStringExpression(pLocation, cursor);
-        if (!character)
-        {
-            mDiag.ReportError(pLocation,
-                "Expected string in '.CHARMAP' directive.");
-            return false;
-        }
-
-        if (!cursor.ExpectNextToken(TokenType::Comma))
-        {
-            mDiag.ReportError(pLocation,
-                "Expected comma after character in '.CHARMAP' directive.");
-            return false;
-        }
-
-        stx::sptr_vector<IntegerExpressionNode> mIntegers {};
-        while (cursor.IsAtEnd() == false)
-        {
-            auto integer = EvaluateIntegerExpression(pLocation, cursor);
-            if (!integer)
-            {
-                mDiag.ReportError(pLocation,
-                    "Expected integer in '.CHARMAP' directive.");
-                return false;
-            }
-            mIntegers.push_back(integer);
-
-            if (cursor.IsAtEnd() == false &&
-                !cursor.ExpectNextToken(TokenType::Comma))
-            {
-                mDiag.ReportError(pLocation,
-                    "Expected comma or end of line in '.CHARMAP' directive.");
-                return false;
-            }
-        }
-
-        node->mString = character;
-        node->mIntegers = std::move(mIntegers);
-        node->mLocation = pLocation;
-        mOutput.mNodes.push_back(node);
-        return true;
-    }
-
-    auto Parser::DispatchNewCharmapDirective (const SourceLocation& pLocation, 
-        TokenCursor& pCursor) -> bool
-    {
-        // Syntax: `.NEWCHARMAP "<NAME>"`
-        auto node = std::make_shared<NewCharmapDirectiveNode>();
-        auto slice = pCursor.CollectLine();
-        TokenCursor cursor { slice };
-
-        auto name = EvaluateStringExpression(pLocation, cursor);
-        if (!name)
-        {
-            mDiag.ReportError(pLocation,
-                "Expected string in '.NEWCHARMAP' directive.");
-            return false;
-        }
-
-        node->mString = name;
-        node->mLocation = pLocation;
-        mOutput.mNodes.push_back(node);
-        return true;    
-    }
-
-    auto Parser::DispatchSetCharmapDirective (const SourceLocation& pLocation, 
-        TokenCursor& pCursor) -> bool
-    {
-        // Syntax: `.SETCHARMAP "<NAME>"`
-        auto node = std::make_shared<SetCharmapDirectiveNode>();
-        auto slice = pCursor.CollectLine();
-        TokenCursor cursor { slice };
-
-        auto name = EvaluateStringExpression(pLocation, cursor);
-        if (!name)
-        {
-            mDiag.ReportError(pLocation,
-                "Expected string in '.SETCHARMAP' directive.");
-            return false;
-        }
-
-        node->mString = name;
-        node->mLocation = pLocation;
-        mOutput.mNodes.push_back(node);
-        return true;
-    }
-
-    auto Parser::DispatchPushCharmapDirective (const SourceLocation& pLocation, 
-        TokenCursor& pCursor) -> bool
-    {
-        // Syntax: `.PUSHCHARMAP ["<NAME>"]`
-        // - "<NAME>" is optional.
-        auto node = std::make_shared<PushCharmapDirectiveNode>();
-        auto slice = pCursor.CollectLine();
-        TokenCursor cursor { slice };
-
-        // Check if a name is provided
-        auto name = EvaluateStringExpression(pLocation, cursor);
-        if (name != nullptr)
-        {
-            node->mString = name;
-        }
-
-        node->mLocation = pLocation;
-        mOutput.mNodes.push_back(node);
-        return true;
-    }
-
-    auto Parser::DispatchPopCharmapDirective (const SourceLocation& pLocation, 
-        TokenCursor& pCursor) -> bool
-    {
-        // Syntax: `.POPCHARMAP`
-        auto node = std::make_shared<PopCharmapDirectiveNode>();
-        node->mLocation = pLocation;
-        mOutput.mNodes.push_back(node);
-        return true;
-    }
-
     auto Parser::DispatchByteDirective (const SourceLocation& pLocation,
         TokenCursor& pCursor) -> bool
     {
@@ -558,6 +432,24 @@ namespace G10::ASM
         auto node = std::make_shared<AlignDirectiveNode>();
         
         node->mLocation = pLocation;node->mBoundary = expr;
+        mOutput.mNodes.push_back(node);
+        return true;
+    }
+
+    auto Parser::DispatchCharmapHintDirective (const SourceLocation& pLocation, 
+        TokenCursor& pCursor) -> bool
+    {
+        auto expr = EvaluateStringExpression(pLocation, pCursor);
+        if (!expr)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string expression in '.CM' directive.");
+            return false;
+        }
+
+        auto node = std::make_shared<CharmapHintDirectiveNode>();
+        node->mName = expr->mValue;
+        node->mLocation = pLocation;
         mOutput.mNodes.push_back(node);
         return true;
     }

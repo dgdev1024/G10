@@ -18,6 +18,13 @@ namespace G10::ASM
 {
     struct PreprocessorSymbol;
 
+    using Charmap = std::vector<std::pair<
+        std::string, 
+        std::uint64_t
+    >>;
+
+    using CharmapTable = stx::dictionary<Charmap>;
+
     using PreprocessorSymbolTable = std::unordered_map<
         std::string, 
         PreprocessorSymbol
@@ -114,6 +121,8 @@ namespace G10::ASM
 
         auto GetSymbolTable () const -> const PreprocessorSymbolTable&
             { return mSymbols; }
+        auto GetCharmapTable () const -> const CharmapTable&
+            { return mCharmaps; }
 
     private: // Methods - Preprocess *******************************************
 
@@ -172,6 +181,14 @@ namespace G10::ASM
 
         auto DispatchInclude (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
         auto DispatchOnce (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+
+    private: // Methods - Dispatch - Charmaps **********************************
+
+        auto DispatchCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchNewCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchSetCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchPushCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchPopCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
 
     private: // Methods - Expressions - Helpers ********************************
 
@@ -253,6 +270,9 @@ namespace G10::ASM
         std::unordered_map<std::string, PreprocessorMacro> mMacros {};
         std::unordered_set<std::string> mOnceFiles {};
         std::vector<PreprocessorMacroCall> mMacroCallStack {};
+        CharmapTable mCharmaps {};
+        std::stack<std::string> mCharmapStack {};
+        std::string mActiveCharmap { "" };
 
         std::string mOutput { "" };
 

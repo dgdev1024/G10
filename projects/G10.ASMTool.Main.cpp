@@ -645,7 +645,7 @@ namespace G10::ASM::Tool
             return 0;
         }
 
-        Codegen codegen { diag };
+        Codegen codegen { diag, pp.GetCharmapTable() };
         codegen.SetIncludeDirectories(sIncludeDirs);
         if (codegen.Run(parser.GetOutput()) == false)
         {

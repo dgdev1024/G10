@@ -10,14 +10,8 @@
 
 #include <G10.ASM.Common.hpp>
 #include <G10.ASM.Diagnostic.hpp>
+#include <G10.ASM.Preprocessor.hpp>
 #include <G10.ASM.Syntax.hpp>
-
-// Types ***********************************************************************
-
-namespace G10::ASM
-{
-    using Charmap = std::unordered_map<std::string, std::vector<std::uint8_t>>;
-}
 
 // Constants & Enumerations ****************************************************
 
@@ -132,7 +126,7 @@ namespace G10::ASM
 
     public: // Constructors & Destructor ***************************************
 
-        Codegen (Diagnostic& pDiag);
+        Codegen (Diagnostic& pDiag, const CharmapTable& pCharmaps);
 
     public: // Methods - Input & Output ****************************************
 
@@ -148,11 +142,6 @@ namespace G10::ASM
     private: // Methods - Dispatch *********************************************
 
         auto Dispatch (const std::shared_ptr<SyntaxNode>& pNode) -> bool;
-        auto DispatchCharmapDirective (const CharmapDirectiveNode& pNode) -> bool;
-        auto DispatchNewCharmapDirective (const NewCharmapDirectiveNode& pNode) -> bool;
-        auto DispatchSetCharmapDirective (const SetCharmapDirectiveNode& pNode) -> bool;
-        auto DispatchPushCharmapDirective (const PushCharmapDirectiveNode& pNode) -> bool;
-        auto DispatchPopCharmapDirective (const PopCharmapDirectiveNode& pNode) -> bool;
         auto DispatchByteDirective (const ByteDirectiveNode& pNode) -> bool;
         auto DispatchWordDirective (const WordDirectiveNode& pNode) -> bool;
         auto DispatchDoubleWordDirective (const DoubleWordDirectiveNode& pNode) -> bool;
@@ -164,6 +153,7 @@ namespace G10::ASM
         auto DispatchSectionDirective (const SectionDirectiveNode& pNode) -> bool;
         auto DispatchOrgDirective (const OrgDirectiveNode& pNode) -> bool;
         auto DispatchAlignDirective (const AlignDirectiveNode& pNode) -> bool;
+        auto DispatchCharmapHintDirective (const CharmapHintDirectiveNode& pNode) -> bool;
         auto DispatchLabelStatement (const LabelStatementNode& pNode) -> bool;
         auto DispatchInstructionStatement (const InstructionStatementNode& pNode) -> bool;
 
@@ -322,9 +312,7 @@ namespace G10::ASM
 
         std::vector<char>                               mStringBuffer;
         std::unordered_map<std::string, std::uint32_t>  mStringLookup;
-
-        std::unordered_map<std::string, Charmap>        mCharmaps {};
-        std::stack<std::string>                         mCharmapStack {};
+        const CharmapTable&                             mCharmaps;
         std::string                                     mActiveCharmap { "" };
 
         std::uint32_t                                   mActiveSectionIndex { stx::npos32 };

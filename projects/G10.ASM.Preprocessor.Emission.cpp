@@ -16,7 +16,9 @@ namespace G10::ASM
         { mOutput += '\n'; }
 
     auto Preprocessor::EmitText (std::string_view pText) -> void
-        { mOutput += pText; }
+    {
+        mOutput += pText;
+    }
 
     auto Preprocessor::EmitToken (const Token& pToken) -> void
     {

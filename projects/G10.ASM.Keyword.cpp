@@ -243,11 +243,6 @@ namespace G10::ASM
         { "RCL", Keyword { CPU::InstructionType::RL } },
         { "RCR", Keyword { CPU::InstructionType::RR } },
 
-        { ".CHARMAP", Keyword { AssemblerDirective::CHARMAP } },
-        { ".NEWCHARMAP", Keyword { AssemblerDirective::NEWCHARMAP } },
-        { ".SETCHARMAP", Keyword { AssemblerDirective::SETCHARMAP } },
-        { ".PUSHCHARMAP", Keyword { AssemblerDirective::PUSHCHARMAP } },
-        { ".POPCHARMAP", Keyword { AssemblerDirective::POPCHARMAP } },
         { ".BYTE", Keyword { AssemblerDirective::BYTE } },
         { ".WORD", Keyword { AssemblerDirective::WORD } },
         { ".DWORD", Keyword { AssemblerDirective::DWORD } },
@@ -260,11 +255,6 @@ namespace G10::ASM
         { ".ORG", Keyword { AssemblerDirective::ORG } },
         { ".ALIGN", Keyword { AssemblerDirective::ALIGN } },
 
-        { ".CMAP", Keyword { AssemblerDirective::CHARMAP } },
-        { ".NEWC", Keyword { AssemblerDirective::NEWCHARMAP } },
-        { ".SETC", Keyword { AssemblerDirective::SETCHARMAP } },
-        { ".PUSHC", Keyword { AssemblerDirective::PUSHCHARMAP } },
-        { ".POPC", Keyword { AssemblerDirective::POPCHARMAP } },
         { ".DB", Keyword { AssemblerDirective::BYTE } },
         { ".DW", Keyword { AssemblerDirective::WORD } },
         { ".DD", Keyword { AssemblerDirective::DWORD } },
@@ -309,6 +299,11 @@ namespace G10::ASM
         { ".ENDMACRO", Keyword { PreprocessorDirective::ENDMACRO } },
         { ".SHIFT", Keyword { PreprocessorDirective::SHIFT } },
         { ".RETURN", Keyword { PreprocessorDirective::RETURN } },
+        { ".CHARMAP", Keyword { PreprocessorDirective::CHARMAP } },
+        { ".NEWCHARMAP", Keyword { PreprocessorDirective::NEWCHARMAP } },
+        { ".SETCHARMAP", Keyword { PreprocessorDirective::SETCHARMAP } },
+        { ".PUSHCHARMAP", Keyword { PreprocessorDirective::PUSHCHARMAP } },
+        { ".POPCHARMAP", Keyword { PreprocessorDirective::POPCHARMAP } },
         { ".OPTION", Keyword { PreprocessorDirective::OPTION } },
         { ".PRINT", Keyword { PreprocessorDirective::PRINT } },
         { ".PRINTLN", Keyword { PreprocessorDirective::PRINTLN } },
@@ -333,20 +328,32 @@ namespace G10::ASM
         { ".ENDF", Keyword { PreprocessorDirective::ENDFOR } },
         { ".ENDW", Keyword { PreprocessorDirective::ENDWHILE } },
         { ".ENDM", Keyword { PreprocessorDirective::ENDMACRO } },
+        { ".CMAP", Keyword { PreprocessorDirective::CHARMAP } },
+        { ".NEWC", Keyword { PreprocessorDirective::NEWCHARMAP } },
+        { ".SETC", Keyword { PreprocessorDirective::SETCHARMAP } },
+        { ".PUSHC", Keyword { PreprocessorDirective::PUSHCHARMAP } },
+        { ".POPC", Keyword { PreprocessorDirective::POPCHARMAP } },
         { ".FAIL", Keyword { PreprocessorDirective::ERROR } },
+        
+        { "DEFINED", Keyword { PreprocessorFunction::DEFINED } },
+        { "ISCONST", Keyword { PreprocessorFunction::ISCONST } },
+        { "ISMACRO", Keyword { PreprocessorFunction::ISMACRO } },
+        { "ISSYMBOL", Keyword { PreprocessorFunction::ISSYMBOL } },
+        { "ISSNIPPET", Keyword { PreprocessorFunction::ISSNIPPET } },
 
+        { "HIGHDWORD", Keyword { PreprocessorFunction::HIGHDWORD } },
+        { "LOWDWORD", Keyword { PreprocessorFunction::LOWDWORD } },
+        { "HIGHWORD", Keyword { PreprocessorFunction::HIGHWORD } },
+        { "LOWWORD", Keyword { PreprocessorFunction::LOWWORD } },
+        { "HIGHBYTE", Keyword { PreprocessorFunction::HIGHBYTE } },
+        { "LOWBYTE", Keyword { PreprocessorFunction::LOWBYTE } },
+        { "HIGHNIBBLE", Keyword { PreprocessorFunction::HIGHNIBBLE } },
+        { "LOWNIBBLE", Keyword { PreprocessorFunction::LOWNIBBLE } },
         { "HIGH", Keyword { PreprocessorFunction::HIGH } },
         { "LOW", Keyword { PreprocessorFunction::LOW } },
-        { "HIDWORD", Keyword { PreprocessorFunction::HIDWORD } },
-        { "LODWORD", Keyword { PreprocessorFunction::LODWORD } },
-        { "HIWORD", Keyword { PreprocessorFunction::HIWORD } },
-        { "LOWORD", Keyword { PreprocessorFunction::LOWORD } },
-        { "HIBYTE", Keyword { PreprocessorFunction::HIBYTE } },
-        { "LOBYTE", Keyword { PreprocessorFunction::LOBYTE } },
-        { "HINIBBLE", Keyword { PreprocessorFunction::HINIBBLE } },
-        { "LONIBBLE", Keyword { PreprocessorFunction::LONIBBLE } },
         { "BITWIDTH", Keyword { PreprocessorFunction::BITWIDTH } },
         { "TZCOUNT", Keyword { PreprocessorFunction::TZCOUNT } },
+
         { "FINT", Keyword { PreprocessorFunction::FINT } },
         { "FFRAC", Keyword { PreprocessorFunction::FFRAC } },
         { "FADD", Keyword { PreprocessorFunction::FADD } },
@@ -359,9 +366,10 @@ namespace G10::ASM
         { "FROOT", Keyword { PreprocessorFunction::FROOT } },
         { "FLOG", Keyword { PreprocessorFunction::FLOG } },
         { "FLN", Keyword { PreprocessorFunction::FLN } },
-        { "FROUND", Keyword { PreprocessorFunction::FROUND } },
         { "FCEIL", Keyword { PreprocessorFunction::FCEIL } },
         { "FFLOOR", Keyword { PreprocessorFunction::FFLOOR } },
+        { "FROUND", Keyword { PreprocessorFunction::FROUND } },
+
         { "FRADT", Keyword { PreprocessorFunction::FRADT } },
         { "FDEGT", Keyword { PreprocessorFunction::FDEGT } },
         { "FSIN", Keyword { PreprocessorFunction::FSIN } },
@@ -371,27 +379,49 @@ namespace G10::ASM
         { "FACOS", Keyword { PreprocessorFunction::FACOS } },
         { "FATAN", Keyword { PreprocessorFunction::FATAN } },
         { "FATAN2", Keyword { PreprocessorFunction::FATAN2 } },
+
         { "STRCAT", Keyword { PreprocessorFunction::STRCAT } },
-        { "STRNCAT", Keyword { PreprocessorFunction::STRNCAT } },
         { "STRUPR", Keyword { PreprocessorFunction::STRUPR } },
         { "STRLWR", Keyword { PreprocessorFunction::STRLWR } },
         { "STRSLICE", Keyword { PreprocessorFunction::STRSLICE } },
-        { "STRREPLACE", Keyword { PreprocessorFunction::STRREPLACE } },
-        { "STRFMT", Keyword { PreprocessorFunction::STRFMT } },
+        { "STRSLICEC", Keyword { PreprocessorFunction::STRSLICEC } },
+        { "STRRPL", Keyword { PreprocessorFunction::STRRPL } },
+        { "STRCHAR", Keyword { PreprocessorFunction::STRCHAR } },
+        { "REVCHAR", Keyword { PreprocessorFunction::REVCHAR } },
+        // { "READFILE", Keyword { PreprocessorFunction::READFILE } },
         { "STRLEN", Keyword { PreprocessorFunction::STRLEN } },
         { "STRCMP", Keyword { PreprocessorFunction::STRCMP } },
         { "STRNCMP", Keyword { PreprocessorFunction::STRNCMP } },
         { "STRFIND", Keyword { PreprocessorFunction::STRFIND } },
         { "STRRFIND", Keyword { PreprocessorFunction::STRRFIND } },
-        { "STRNFIND", Keyword { PreprocessorFunction::STRNFIND } },
-        { "STRNRFIND", Keyword { PreprocessorFunction::STRNRFIND } },
         { "BYTELEN", Keyword { PreprocessorFunction::BYTELEN } },
         { "STRBYTE", Keyword { PreprocessorFunction::STRBYTE } },
-        { "DEFINED", Keyword { PreprocessorFunction::DEFINED } },
-        { "ISCONST", Keyword { PreprocessorFunction::ISCONST } },
-        { "ISMACRO", Keyword { PreprocessorFunction::ISMACRO } },
-        { "ISSYMBOL", Keyword { PreprocessorFunction::ISSYMBOL } },
-        { "ISSNIPPET", Keyword { PreprocessorFunction::ISSNIPPET } },
+        { "INCHARMAP", Keyword { PreprocessorFunction::INCHARMAP } },
+        { "CHARLEN", Keyword { PreprocessorFunction::CHARLEN } },
+        { "CHARCMP", Keyword { PreprocessorFunction::CHARCMP } },
+        { "CHARSIZE", Keyword { PreprocessorFunction::CHARSIZE } },
+        { "CHARVAL", Keyword { PreprocessorFunction::CHARVAL } },
+
+        { "DIV", Keyword { PreprocessorFunction::FDIV } },
+        { "MUL", Keyword { PreprocessorFunction::FMUL } },
+        { "MOD", Keyword { PreprocessorFunction::FMOD } },
+        { "POW", Keyword { PreprocessorFunction::FPOW } },
+        { "SQRT", Keyword { PreprocessorFunction::FSQRT } },
+        { "ROOT", Keyword { PreprocessorFunction::FROOT } },
+        { "LOG", Keyword { PreprocessorFunction::FLOG } },
+        { "LN", Keyword { PreprocessorFunction::FLN } },
+        { "CEIL", Keyword { PreprocessorFunction::FCEIL } },
+        { "FLOOR", Keyword { PreprocessorFunction::FFLOOR } },
+        { "ROUND", Keyword { PreprocessorFunction::FROUND } },
+        { "RADT", Keyword { PreprocessorFunction::FRADT } },
+        { "DEGT", Keyword { PreprocessorFunction::FDEGT } },
+        { "SIN", Keyword { PreprocessorFunction::FSIN } },
+        { "COS", Keyword { PreprocessorFunction::FCOS } },
+        { "TAN", Keyword { PreprocessorFunction::FTAN } },
+        { "ASIN", Keyword { PreprocessorFunction::FASIN } },
+        { "ACOS", Keyword { PreprocessorFunction::FACOS } },
+        { "ATAN", Keyword { PreprocessorFunction::FATAN } },
+        { "ATAN2", Keyword { PreprocessorFunction::FATAN2 } },
 
         { "METADATA", Keyword { SectionName::METADATA } },
         { "INT0", Keyword { SectionName::INT0 } },
@@ -435,7 +465,8 @@ namespace G10::ASM
         { "RAM", Keyword { SectionName::BSS } },
 
         { ".FILE", Keyword { Hint::FILE } },
-        { ".LINE", Keyword { Hint::LINE } }
+        { ".LINE", Keyword { Hint::LINE } },
+        { ".CM", Keyword { Hint::CM } }
     };
 }
 
@@ -708,6 +739,11 @@ namespace G10::ASM
                     case PreprocessorDirective::ENDMACRO: return ".ENDMACRO";
                     case PreprocessorDirective::SHIFT: return ".SHIFT";
                     case PreprocessorDirective::RETURN: return ".RETURN";
+                    case PreprocessorDirective::CHARMAP: return ".CHARMAP";
+                    case PreprocessorDirective::NEWCHARMAP: return ".NEWCHARMAP";
+                    case PreprocessorDirective::SETCHARMAP: return ".SETCHARMAP";
+                    case PreprocessorDirective::PUSHCHARMAP: return ".PUSHCHARMAP";
+                    case PreprocessorDirective::POPCHARMAP: return ".POPCHARMAP";
                     case PreprocessorDirective::OPTION: return ".OPTION";
                     case PreprocessorDirective::PRINT: return ".PRINT";
                     case PreprocessorDirective::PRINTLN: return ".PRINTLN";
@@ -765,18 +801,25 @@ namespace G10::ASM
             { 
                 switch (pType)
                 {
+                    case PreprocessorFunction::DEFINED: return "DEFINED";
+                    case PreprocessorFunction::ISCONST: return "ISCONST";
+                    case PreprocessorFunction::ISMACRO: return "ISMACRO";
+                    case PreprocessorFunction::ISSYMBOL: return "ISSYMBOL";
+                    case PreprocessorFunction::ISSNIPPET: return "ISSNIPPET";
+
+                    case PreprocessorFunction::HIGHDWORD: return "HIGHDWORD";
+                    case PreprocessorFunction::LOWDWORD: return "LOWDWORD";
+                    case PreprocessorFunction::HIGHWORD: return "HIGHWORD";
+                    case PreprocessorFunction::LOWWORD: return "LOWWORD";
+                    case PreprocessorFunction::HIGHBYTE: return "HIGHBYTE";
+                    case PreprocessorFunction::LOWBYTE: return "LOWBYTE";
+                    case PreprocessorFunction::HIGHNIBBLE: return "HIGHNIBBLE";
+                    case PreprocessorFunction::LOWNIBBLE: return "LOWNIBBLE";
                     case PreprocessorFunction::HIGH: return "HIGH";
                     case PreprocessorFunction::LOW: return "LOW";
-                    case PreprocessorFunction::HIDWORD: return "HIDWORD";
-                    case PreprocessorFunction::LODWORD: return "LODWORD";
-                    case PreprocessorFunction::HIWORD: return "HIWORD";
-                    case PreprocessorFunction::LOWORD: return "LOWORD";
-                    case PreprocessorFunction::HIBYTE: return "HIBYTE";
-                    case PreprocessorFunction::LOBYTE: return "LOBYTE";
-                    case PreprocessorFunction::HINIBBLE: return "HINIBBLE";
-                    case PreprocessorFunction::LONIBBLE: return "LONIBBLE";
                     case PreprocessorFunction::BITWIDTH: return "BITWIDTH";
                     case PreprocessorFunction::TZCOUNT: return "TZCOUNT";
+
                     case PreprocessorFunction::FINT: return "FINT";
                     case PreprocessorFunction::FFRAC: return "FFRAC";
                     case PreprocessorFunction::FADD: return "FADD";
@@ -785,13 +828,12 @@ namespace G10::ASM
                     case PreprocessorFunction::FMUL: return "FMUL";
                     case PreprocessorFunction::FMOD: return "FMOD";
                     case PreprocessorFunction::FPOW: return "FPOW";
-                    case PreprocessorFunction::FSQRT: return "FSQRT";
-                    case PreprocessorFunction::FROOT: return "FROOT";
                     case PreprocessorFunction::FLOG: return "FLOG";
                     case PreprocessorFunction::FLN: return "FLN";
-                    case PreprocessorFunction::FROUND: return "FROUND";
                     case PreprocessorFunction::FCEIL: return "FCEIL";
                     case PreprocessorFunction::FFLOOR: return "FFLOOR";
+                    case PreprocessorFunction::FROUND: return "FROUND";
+
                     case PreprocessorFunction::FRADT: return "FRADT";
                     case PreprocessorFunction::FDEGT: return "FDEGT";
                     case PreprocessorFunction::FSIN: return "FSIN";
@@ -801,27 +843,29 @@ namespace G10::ASM
                     case PreprocessorFunction::FACOS: return "FACOS";
                     case PreprocessorFunction::FATAN: return "FATAN";
                     case PreprocessorFunction::FATAN2: return "FATAN2";
+
                     case PreprocessorFunction::STRCAT: return "STRCAT";
-                    case PreprocessorFunction::STRNCAT: return "STRNCAT";
                     case PreprocessorFunction::STRUPR: return "STRUPR";
                     case PreprocessorFunction::STRLWR: return "STRLWR";
                     case PreprocessorFunction::STRSLICE: return "STRSLICE";
-                    case PreprocessorFunction::STRREPLACE: return "STRREPLACE";
-                    case PreprocessorFunction::STRFMT: return "STRFMT";
+                    case PreprocessorFunction::STRSLICEC: return "STRSLICEC";
+                    case PreprocessorFunction::STRRPL: return "STRRPL";
+                    case PreprocessorFunction::STRCHAR: return "STRCHAR";
+                    case PreprocessorFunction::REVCHAR: return "REVCHAR";
+                    // case PreprocessorFunction::READFILE: return "READFILE";
                     case PreprocessorFunction::STRLEN: return "STRLEN";
                     case PreprocessorFunction::STRCMP: return "STRCMP";
                     case PreprocessorFunction::STRNCMP: return "STRNCMP";
                     case PreprocessorFunction::STRFIND: return "STRFIND";
                     case PreprocessorFunction::STRRFIND: return "STRRFIND";
-                    case PreprocessorFunction::STRNFIND: return "STRNFIND";
-                    case PreprocessorFunction::STRNRFIND: return "STRNRFIND";
                     case PreprocessorFunction::BYTELEN: return "BYTELEN";
                     case PreprocessorFunction::STRBYTE: return "STRBYTE";
-                    case PreprocessorFunction::DEFINED: return "DEFINED";
-                    case PreprocessorFunction::ISCONST: return "ISCONST";
-                    case PreprocessorFunction::ISMACRO: return "ISMACRO";
-                    case PreprocessorFunction::ISSYMBOL: return "ISSYMBOL";
-                    case PreprocessorFunction::ISSNIPPET: return "ISSNIPPET";
+                    case PreprocessorFunction::INCHARMAP: return "INCHARMAP";
+                    case PreprocessorFunction::CHARLEN: return "CHARLEN";
+                    case PreprocessorFunction::CHARCMP: return "CHARCMP";
+                    case PreprocessorFunction::CHARSIZE: return "CHARSIZE";
+                    case PreprocessorFunction::CHARVAL: return "CHARVAL";
+
                     default: return "";
                 }
             },
@@ -829,11 +873,6 @@ namespace G10::ASM
             { 
                 switch (pType)
                 {
-                    case AssemblerDirective::CHARMAP: return ".CHARMAP";
-                    case AssemblerDirective::NEWCHARMAP: return ".NEWCHARMAP";
-                    case AssemblerDirective::SETCHARMAP: return ".SETCHARMAP";
-                    case AssemblerDirective::PUSHCHARMAP: return ".PUSHCHARMAP";
-                    case AssemblerDirective::POPCHARMAP: return ".POPCHARMAP";
                     case AssemblerDirective::BYTE: return ".BYTE";
                     case AssemblerDirective::WORD: return ".WORD";
                     case AssemblerDirective::DWORD: return ".DWORD";
@@ -871,6 +910,7 @@ namespace G10::ASM
                 {
                     case Hint::FILE: return ".FILE";
                     case Hint::LINE: return ".LINE";
+                    case Hint::CM: return ".CM";
                     default: return "";
                 }
             }

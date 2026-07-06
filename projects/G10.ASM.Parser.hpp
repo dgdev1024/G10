@@ -36,16 +36,6 @@ namespace G10::ASM
 
     private: // Methods - Dispatch - Directives ********************************
 
-        auto DispatchCharmapDirective (const SourceLocation& pLocation, 
-            TokenCursor& pCursor) -> bool;
-        auto DispatchNewCharmapDirective (const SourceLocation& pLocation, 
-            TokenCursor& pCursor) -> bool;
-        auto DispatchSetCharmapDirective (const SourceLocation& pLocation, 
-            TokenCursor& pCursor) -> bool;
-        auto DispatchPushCharmapDirective (const SourceLocation& pLocation, 
-            TokenCursor& pCursor) -> bool;
-        auto DispatchPopCharmapDirective (const SourceLocation& pLocation, 
-            TokenCursor& pCursor) -> bool;
         auto DispatchByteDirective (const SourceLocation& pLocation, 
             TokenCursor& pCursor) -> bool;
         auto DispatchWordDirective (const SourceLocation& pLocation, 
@@ -67,6 +57,8 @@ namespace G10::ASM
         auto DispatchOrgDirective (const SourceLocation& pLocation, 
             TokenCursor& pCursor) -> bool;
         auto DispatchAlignDirective (const SourceLocation& pLocation, 
+            TokenCursor& pCursor) -> bool;
+        auto DispatchCharmapHintDirective (const SourceLocation& pLocation, 
             TokenCursor& pCursor) -> bool;
 
     private: // Methods - Dispatch - Statements ********************************

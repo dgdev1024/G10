@@ -113,47 +113,6 @@ namespace G10::ASM
 
     struct G10_API DirectiveNode : SyntaxNode {};
 
-    struct G10_API CharmapDirectiveNode final : DirectiveNode
-    {
-        std::shared_ptr<StringExpressionNode> mString {};
-        stx::sptr_vector<IntegerExpressionNode> mIntegers {};
-
-    public:
-        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
-
-    };
-
-    struct G10_API NewCharmapDirectiveNode final : DirectiveNode
-    {
-        std::shared_ptr<StringExpressionNode> mString {};
-
-    public:
-        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
-    };
-
-    struct G10_API SetCharmapDirectiveNode final : DirectiveNode
-    {
-        std::shared_ptr<StringExpressionNode> mString {};
-
-    public:
-        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
-    };
-
-    struct G10_API PushCharmapDirectiveNode final : DirectiveNode
-    {
-        std::shared_ptr<StringExpressionNode> mString {};
-
-    public:
-        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
-    };
-
-    struct G10_API PopCharmapDirectiveNode final : DirectiveNode
-    {
-    public:
-        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
-        
-    };
-
     struct G10_API ByteDirectiveNode final : DirectiveNode
     {
         stx::sptr_vector<ExpressionNode> mOperands {};
@@ -251,6 +210,15 @@ namespace G10::ASM
     struct G10_API AlignDirectiveNode final : DirectiveNode
     {
         std::shared_ptr<IntegerExpressionNode> mBoundary;
+
+    public:
+        auto Stringify (std::size_t pIndent = 0) const -> std::string override;
+        
+    };
+
+    struct G10_API CharmapHintDirectiveNode final : DirectiveNode
+    {
+        std::string mName { "" };
 
     public:
         auto Stringify (std::size_t pIndent = 0) const -> std::string override;

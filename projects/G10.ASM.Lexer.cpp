@@ -198,6 +198,8 @@ namespace G10::ASM
             mSourceChar == '.' ||
             mSourceChar == '{' ||
             mSourceChar == '}' ||
+            mSourceChar == '(' ||
+            mSourceChar == ')' ||
             mSourceChar == ':' ||
             mSourceChar == '@' ||
             mSourceChar == '#' ||
@@ -288,7 +290,7 @@ namespace G10::ASM
                 //     return std::nullopt;
                 // }
             }
-            else if (mSourceChar == '\"')
+            else if (mSourceChar == '\"' || mSourceChar == '(' || mSourceChar == ')')
             {
                 if (mSecondPass == true || interpolationDepth == 0)
                     { break; }
@@ -308,7 +310,8 @@ namespace G10::ASM
         const auto& keyword = Keyword::Lookup(lexeme);
         if (keyword.has_value() == true)
         {
-            if (keyword->Is<Hint>())
+            if (keyword->Is<Hint>() &&
+                keyword->GetType<Hint>() != Hint::CM)
             {
                 if (mSecondPass == false)
                 {
@@ -426,7 +429,7 @@ namespace G10::ASM
                 if (escape == true)
                     { Next(); continue; }
             }
-            else if (mSourceChar == '\"')
+            else if (mSourceChar == '\"' && interpolationDepth == 0)
             {
                 if (escape == false)
                     { break; }
@@ -480,6 +483,7 @@ namespace G10::ASM
         }
         else if (interpolationDepth > 0)
         {
+            // debug("Lexeme: '{}'", lexeme);
             mDiag.ReportError(mLocation, "Missing closing brace in string interpolation.");
             return std::nullopt;
         }

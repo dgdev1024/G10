@@ -82,64 +82,6 @@ namespace G10::ASM
 
     // Directive Nodes *********************************************************
 
-    auto CharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
-    {
-        std::string str = std::format(
-            "{0}CharmapDirective:\n"
-            "'{1}'\n",
-            std::string(pIndent * 2, ' '),
-            mString ? mString->Stringify(pIndent + 2) : ""
-        );
-
-        if (!mIntegers.empty())
-        {
-            for (const auto& integer : mIntegers)
-            {
-                str += integer->Stringify(pIndent + 2) + " ";
-            }
-        }
-
-        return str;
-    }
-
-    auto NewCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
-    {
-        return std::format(
-            "{0}NewCharmapDirective:\n"
-            "{1}",
-            std::string(pIndent * 2, ' '),
-            mString ? mString->Stringify(pIndent + 2) : ""
-        );
-    }
-
-    auto SetCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
-    {
-        return std::format(
-            "{0}SetCharmapDirective:\n"
-            "{1}",
-            std::string(pIndent * 2, ' '),
-            mString ? mString->Stringify(pIndent + 2) : ""
-        );
-    }
-
-    auto PushCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
-    {
-        return std::format(
-            "{0}PushCharmapDirective:\n"
-            "{1}",
-            std::string(pIndent * 2, ' '),
-            mString ? mString->Stringify(pIndent + 2) : ""
-        );
-    }
-
-    auto PopCharmapDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
-    {
-        return std::format(
-            "{0}PopCharmapDirective:\n",
-            std::string(pIndent * 2, ' ')
-        );
-    }
-
     auto ByteDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
     {
         std::string str = std::format(
@@ -296,6 +238,16 @@ namespace G10::ASM
             "{1}",
             std::string(pIndent * 2, ' '),
             mBoundary ? mBoundary->Stringify(pIndent + 1) : ""
+        );
+    }
+
+    auto CharmapHintDirectiveNode::Stringify (std::size_t pIndent) const -> std::string
+    {
+        return std::format(
+            "{0}CharmapHintDirective:\n"
+            "{1}",
+            std::string(pIndent * 2, ' '),
+            mName
         );
     }
 

@@ -1,6 +1,6 @@
 
 .newcharmap "test"
-.charmap "&euro;", 0xAC, 0x20
+.charmap "&euro;", 0xAC20
 
 .macro test
     .byte @#
@@ -8,7 +8,7 @@
 
 .section "other stuff", data
     bug: .dword 42
-    lbl: test "Dennis W. Griffin", 34, 0x42, "&euro;"
+    lbl: .byte "&euro;"
 
 .section "main program", code
     main::

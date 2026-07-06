@@ -15,7 +15,9 @@ namespace G10::ASM
 {
     Preprocessor::Preprocessor (Diagnostic& pDiag) :
         mDiag   { pDiag }
-    {}
+    {
+        mCharmaps[""] = {};
+    }
 }
 
 // Public Methods - Input & Output *********************************************

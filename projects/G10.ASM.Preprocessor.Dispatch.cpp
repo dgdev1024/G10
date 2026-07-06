@@ -38,26 +38,31 @@ namespace G10::ASM
         {
             switch (*type)
             {
-                case PreprocessorDirective::PRINT:      return DispatchPrint(pCursor, pLocation, false);
-                case PreprocessorDirective::PRINTLN:    return DispatchPrint(pCursor, pLocation, true);
-                case PreprocessorDirective::INFO:       return DispatchInfo(pCursor, pLocation);
-                case PreprocessorDirective::WARNING:    return DispatchWarning(pCursor, pLocation);
-                case PreprocessorDirective::ERROR:      return DispatchError(pCursor, pLocation);
-                case PreprocessorDirective::ASSERT:     return DispatchAssert(pCursor, pLocation);
-                case PreprocessorDirective::LET:        return DispatchLet(pCursor, pLocation);
-                case PreprocessorDirective::CONST:      return DispatchConst(pCursor, pLocation);
-                case PreprocessorDirective::SNIPPET:    return DispatchSnippet(pCursor, pLocation);
-                case PreprocessorDirective::IF:         return DispatchIf(pCursor, pLocation);
-                case PreprocessorDirective::REPEAT:     return DispatchRepeat(pCursor, pLocation);
-                case PreprocessorDirective::WHILE:      return DispatchWhile(pCursor, pLocation);
-                case PreprocessorDirective::FOR:        return DispatchFor(pCursor, pLocation);
-                case PreprocessorDirective::CONTINUE:   return DispatchContinue(pCursor, pLocation);
-                case PreprocessorDirective::BREAK:      return DispatchBreak(pCursor, pLocation);
-                case PreprocessorDirective::MACRO:      return DispatchMacro(pCursor, pLocation);
-                case PreprocessorDirective::SHIFT:      return DispatchShift(pCursor, pLocation);
-                case PreprocessorDirective::RETURN:     return DispatchReturn(pCursor, pLocation);
-                case PreprocessorDirective::INCLUDE:    return DispatchInclude(pCursor, pLocation);
-                case PreprocessorDirective::ONCE:       return DispatchOnce(pCursor, pLocation);
+                case PreprocessorDirective::PRINT:          return DispatchPrint(pCursor, pLocation, false);
+                case PreprocessorDirective::PRINTLN:        return DispatchPrint(pCursor, pLocation, true);
+                case PreprocessorDirective::INFO:           return DispatchInfo(pCursor, pLocation);
+                case PreprocessorDirective::WARNING:        return DispatchWarning(pCursor, pLocation);
+                case PreprocessorDirective::ERROR:          return DispatchError(pCursor, pLocation);
+                case PreprocessorDirective::ASSERT:         return DispatchAssert(pCursor, pLocation);
+                case PreprocessorDirective::LET:            return DispatchLet(pCursor, pLocation);
+                case PreprocessorDirective::CONST:          return DispatchConst(pCursor, pLocation);
+                case PreprocessorDirective::SNIPPET:        return DispatchSnippet(pCursor, pLocation);
+                case PreprocessorDirective::IF:             return DispatchIf(pCursor, pLocation);
+                case PreprocessorDirective::REPEAT:         return DispatchRepeat(pCursor, pLocation);
+                case PreprocessorDirective::WHILE:          return DispatchWhile(pCursor, pLocation);
+                case PreprocessorDirective::FOR:            return DispatchFor(pCursor, pLocation);
+                case PreprocessorDirective::CONTINUE:       return DispatchContinue(pCursor, pLocation);
+                case PreprocessorDirective::BREAK:          return DispatchBreak(pCursor, pLocation);
+                case PreprocessorDirective::MACRO:          return DispatchMacro(pCursor, pLocation);
+                case PreprocessorDirective::SHIFT:          return DispatchShift(pCursor, pLocation);
+                case PreprocessorDirective::RETURN:         return DispatchReturn(pCursor, pLocation);
+                case PreprocessorDirective::INCLUDE:        return DispatchInclude(pCursor, pLocation);
+                case PreprocessorDirective::ONCE:           return DispatchOnce(pCursor, pLocation);
+                case PreprocessorDirective::CHARMAP:        return DispatchCharmap(pCursor, pLocation);
+                case PreprocessorDirective::NEWCHARMAP:     return DispatchNewCharmap(pCursor, pLocation);
+                case PreprocessorDirective::SETCHARMAP:     return DispatchSetCharmap(pCursor, pLocation);
+                case PreprocessorDirective::PUSHCHARMAP:    return DispatchPushCharmap(pCursor, pLocation);
+                case PreprocessorDirective::POPCHARMAP:     return DispatchPopCharmap(pCursor, pLocation);
                 case PreprocessorDirective::ELSEIF:
                 case PreprocessorDirective::ELSE:
                 case PreprocessorDirective::ENDIF:
@@ -274,7 +279,7 @@ namespace G10::ASM
     }
 }
 
-// Private Methods - Dispatch - Print & // Debug **********************************
+// Private Methods - Dispatch - Print & Debug **********************************
 
 namespace G10::ASM
 {
@@ -630,7 +635,7 @@ namespace G10::ASM
             .mLocation      = pLocation
         };
 
-        debug("Defined constant '{}' = {}", *nameLexeme, exprValue.EmitString());
+        // debug("Defined constant '{}' = {}", *nameLexeme, exprValue.EmitString());
 
         return true;
     }
@@ -1501,6 +1506,187 @@ namespace G10::ASM
         fs::path absolute = NormalizePath(pCursor.GetNextToken().mLocation.mPath);
         if (mOnceFiles.contains(absolute.string()) == false)
             { mOnceFiles.insert(absolute.string()); }
+
+        return true;
+    }
+}
+
+// Private Methods - Dispatch - Charmaps ***************************************
+
+namespace G10::ASM
+{
+    auto Preprocessor::DispatchCharmap (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // Syntax: `.CHARMAP "<STRING>", <VALUE>`
+        auto argSlice = DeepSlice(pCursor.CollectLine());
+        TokenCursor argCursor { argSlice };
+
+        auto stringVal = EvaluateExpression(argCursor);
+        if (stringVal.IsString() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in `.CHARMAP` directive");
+            return false;
+        }
+
+        if (!argCursor.ExpectNextToken(TokenType::Comma))
+        {
+            mDiag.ReportError(pLocation,
+                "Expected comma after string in `.CHARMAP` directive");
+            return false;
+        }
+        
+        auto intVal = EvaluateExpression(argCursor);
+        if (intVal.IsInteger() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected integer in `.CHARMAP` directive");
+            return false;
+        }
+
+        auto& charmap = mCharmaps[mActiveCharmap];
+        charmap.emplace_back(*stringVal.GetString(), static_cast<std::uint64_t>(*intVal.GetInteger()));
+
+        // Every time we insert a new node, we need to sort:
+        // - Longer keys first
+        std::sort(charmap.begin(), charmap.end(), [] (const auto& a, const auto& b) {
+            return a.first.length() > b.first.length();
+        });
+
+        // charmap[*stringVal.GetString()] = static_cast<std::uint64_t>(*intVal.GetInteger());
+        // debug("Mapped character '{}' to code {:08X} in charmap '{}'", *stringVal.GetString(), charmap[*stringVal.GetString()], mActiveCharmap);
+        return true;
+    }
+
+    auto Preprocessor::DispatchNewCharmap (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // Syntax: `.NEWCHARMAP "<STRING>"[, "<BASENAME>"]`
+        // - If `<BASENAME>` is provided, then the charmap mapped to that base
+        //   name is copied into this new charmap.
+        auto argSlice = DeepSlice(pCursor.CollectLine());
+        TokenCursor argCursor { argSlice };
+
+        auto stringVal = EvaluateExpression(argCursor);
+        if (stringVal.IsString() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in `.NEWCHARMAP` directive");
+            return false;
+        }
+
+        if (argCursor.ExpectNextToken(TokenType::Comma))
+        {
+            auto baseNameVal = EvaluateExpression(argCursor);
+            if (baseNameVal.IsString() == false)
+            {
+                mDiag.ReportError(pLocation,
+                    "Expected string in `.NEWCHARMAP` directive");
+                return false;
+            }
+
+            if (mCharmaps.find(*baseNameVal.GetString()) == mCharmaps.end())
+            {
+                mDiag.ReportError(pLocation,
+                    "Unknown character map in `.NEWCHARMAP` directive");
+                return false;
+            }
+
+            mCharmaps[*stringVal.GetString()] = mCharmaps[*baseNameVal.GetString()];
+        }
+        else
+        {
+            mCharmaps[*stringVal.GetString()] = {};
+        }
+
+        mActiveCharmap = *stringVal.GetString();
+        EmitText(std::format(".CM \"{}\"\n", mActiveCharmap));
+
+        return true;
+    }
+
+    auto Preprocessor::DispatchSetCharmap (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // Syntax: `.SETCHARMAP "<STRING>"`
+        auto argSlice = DeepSlice(pCursor.CollectLine());
+        TokenCursor argCursor { argSlice };
+
+        auto stringVal = EvaluateExpression(argCursor);
+        if (stringVal.IsString() == false)
+        {
+            mDiag.ReportError(pLocation,
+                "Expected string in `.SETCHARMAP` directive");
+            return false;
+        }
+
+        if (mCharmaps.find(*stringVal.GetString()) == mCharmaps.end())
+        {
+            mDiag.ReportError(pLocation,
+                "Unknown character map in `.SETCHARMAP` directive");
+            return false;
+        }
+
+        mActiveCharmap = *stringVal.GetString();
+        EmitText(std::format(".CM \"{}\"\n", mActiveCharmap));
+
+        return true;
+    }
+
+    auto Preprocessor::DispatchPushCharmap (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // Syntax: `.PUSHCHARMAP ["<STRING>"]`
+        // - If `<STRING>` is provided, then the current charmap is switched
+        //   to that mapped to that string after this one is pushed onto
+        //   the stack.
+        auto argSlice = DeepSlice(pCursor.CollectLine());
+        TokenCursor argCursor { argSlice };
+
+        if (argCursor.IsAtEnd())
+        {
+            mCharmapStack.push(mActiveCharmap);
+        }
+        else
+        {
+            auto stringVal = EvaluateExpression(argCursor);
+            if (stringVal.IsString() == false)
+            {
+                mDiag.ReportError(pLocation,
+                    "Expected string in `.PUSHCHARMAP` directive");
+                return false;
+            }
+
+            if (mCharmaps.find(*stringVal.GetString()) == mCharmaps.end())
+            {
+                mDiag.ReportError(pLocation,
+                    "Unknown character map in `.PUSHCHARMAP` directive");
+                return false;
+            }
+
+            mCharmapStack.push(mActiveCharmap);
+            mActiveCharmap = *stringVal.GetString();
+            EmitText(std::format(".CM \"{}\"\n", mActiveCharmap));
+        }
+
+        return true;
+    }
+
+    auto Preprocessor::DispatchPopCharmap (TokenCursor& pCursor, 
+        const SourceLocation& pLocation) -> bool
+    {
+        // Syntax: `.POPCHARMAP`
+        if (mCharmapStack.empty())
+        {
+            mDiag.ReportError(pLocation,
+                "Attempted to pop from empty character map stack in `.POPCHARMAP` directive");
+            return false;
+        }
+
+        mActiveCharmap = mCharmapStack.top();
+        mCharmapStack.pop();
+        EmitText(std::format(".CM \"{}\"\n", mActiveCharmap));
 
         return true;
     }
