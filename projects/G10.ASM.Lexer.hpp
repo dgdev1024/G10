@@ -66,6 +66,7 @@ namespace G10::ASM
         bool                mHint { false };
         bool                mHintFile { false };
         bool                mHintLine { false };
+        bool                mHintCM { false };
 
     };
 }

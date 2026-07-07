@@ -114,10 +114,24 @@ namespace G10::ASM
             {
                 if (mSecondPass == true && token->IsValidSecondPass() == false)
                 {
-                    mDiag.ReportError(mLocation,
-                        "'{}' token '{}' is invalid during second-pass lexing.",
-                        token->StringifyGroup(), token->StringifyType());
-                    return false;
+                    if (mHintCM == true && token->mType == TokenType::StringLiteral)
+                    { 
+                        mHintCM = false; 
+                        mHint = false;
+                    }
+                    else
+                    {
+                        mDiag.ReportError(mLocation,
+                            "'{}' token '{}' is invalid during second-pass lexing.",
+                            token->StringifyGroup(), token->StringifyType());
+                        return false;
+                    }
+                }
+
+                if (mHintCM == true && token->mType == TokenType::StringLiteral)
+                { 
+                    mHintCM = false; 
+                    mHint = false;
                 }
 
                 mTokens.push_back(*token);
@@ -128,6 +142,8 @@ namespace G10::ASM
                     { mHintFile = mHint; }
                 else if (mHintLine == true)
                     { mHintLine = mHint; }
+                else if (mHintCM == true)
+                    { mHintCM = mHint; }
                 else
                     { return false; } 
             }
@@ -310,8 +326,7 @@ namespace G10::ASM
         const auto& keyword = Keyword::Lookup(lexeme);
         if (keyword.has_value() == true)
         {
-            if (keyword->Is<Hint>() &&
-                keyword->GetType<Hint>() != Hint::CM)
+            if (keyword->Is<Hint>())
             {
                 if (mSecondPass == false)
                 {
@@ -326,6 +341,12 @@ namespace G10::ASM
                     { mHintFile = true; }
                 else if (type == Hint::LINE)
                     { mHintLine = true; }
+                else if (type == Hint::CM)
+                { 
+                    mHintCM = true; 
+                    mHint = true;
+                    return Token { *keyword, mLocation };
+                }
                 else
                 {
                     mDiag.ReportError(mLocation,

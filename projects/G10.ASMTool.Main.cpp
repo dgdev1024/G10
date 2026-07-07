@@ -599,7 +599,6 @@ namespace G10::ASM::Tool
                 linker.SaveSymbolFile(sSymbolFile);
             }
 
-            debug("Symbol file: '{}'", sSymbolFile);
             ReportDiagnostic(diag);
             return (ok == true) ? 0 : 1;
         }
