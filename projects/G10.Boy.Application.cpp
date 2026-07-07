@@ -301,7 +301,7 @@ namespace G10::Boy
     
     #if !defined(G10_CONFIG_DEBUG)
         io.IniFilename = nullptr;
-        ImGui::LoadIniSettingsFromMemory(kIniData.data(), kIniData.size());
+        ImGui::LoadIniSettingsFromMemory(kIniData.data());
     #endif
 
         ImGui::StyleColorsDark();
