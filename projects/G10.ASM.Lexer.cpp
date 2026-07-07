@@ -552,6 +552,7 @@ namespace G10::ASM
                 case '0':   charCode = '\0'; break;
                 case 'n':   charCode = '\n'; break;
                 case 't':   charCode = '\t'; break;
+                case 'r':   charCode = '\r'; break;
                 case '\\':  charCode = '\\'; break;
                 case '\'':  charCode = '\''; break;
                 case '\"':  charCode = '\"'; break;
