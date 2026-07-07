@@ -8,6 +8,9 @@
 
 #include <G10.ASM.Linker.hpp>
 
+#include <fstream>
+#include <iomanip>
+
 // Static Constants ************************************************************
 
 namespace G10::ASM
@@ -192,6 +195,124 @@ namespace G10::ASM
         }
 
         file.write(reinterpret_cast<const char*>(image.data()), image.size());
+        return true;
+    }
+
+    auto Linker::SaveSymbolFile (const fs::path& pPath) -> bool
+    {
+        std::ofstream file { pPath, std::ios::out };
+        if (file.is_open() == false)
+        {
+            mDiag.ReportError("Failed to open symbol file '{}' for writing.",
+                pPath.string());
+            return false;
+        }
+
+        std::unordered_set<std::string> mNames {};
+        for (const auto& [path, obj] : mObjects)
+        {
+            const auto& symbolTable = obj.GetSymbolTable();
+            for (std::size_t i = 0; i < symbolTable.size(); ++i)
+            {
+                const auto& symbol = symbolTable[i];
+                auto name = obj.LookupStringByOffset(symbol.mNameStringOffset);
+                if (name.has_value() == false)
+                {
+                    mDiag.ReportError("Encountered unnamed symbol while writing symbol file.");
+                    mDiag.ReportInfo("Object '{}', symbol index {}.", path, i);
+                    return false;
+                }
+
+                if (mNames.contains(*name) == true)
+                    { continue; }
+                else
+                    { mNames.insert(*name); }
+
+                std::uint32_t sectionIndex { 0 };
+                std::uint32_t addressOffset { 0 };
+                if (symbol.mType == ObjectSymbolType::Import)
+                {
+                    const auto findIt = mExportMap.find(*name);
+                    if (findIt == mExportMap.end())
+                    {
+                        mDiag.ReportError(
+                            "Encountered unresolved import symbol '{}' while writing symbol file.",
+                            *name);
+                        return false;
+                    }
+
+                    const auto& [objectPath, symbolIndex] = findIt->second;
+                    const auto& definedObject = mObjects[objectPath];
+                    const auto& definedSymbols = definedObject.GetSymbolTable();
+                    if (symbolIndex >= definedSymbols.size())
+                    {
+                        mDiag.ReportError(
+                            "Encountered invalid symbol index {} for export '{}' while writing symbol file.",
+                            symbolIndex, *name);
+                        return false;
+                    }
+
+                    const auto& definedSymbol = definedSymbols[symbolIndex];
+                    const auto mapIt = mSectionIndexMap.find({ objectPath, definedSymbol.mSectionIndex });
+                    if (mapIt == mSectionIndexMap.end())
+                    {
+                        mDiag.ReportError(
+                            "Unable to resolve output section for symbol '{}'.",
+                            *name);
+                        return false;
+                    }
+
+                    sectionIndex = mapIt->second;
+                    addressOffset = definedSymbol.mAddressOffset;
+                }
+                else
+                {
+                    const auto mapIt = mSectionIndexMap.find({ path, symbol.mSectionIndex });
+                    if (mapIt == mSectionIndexMap.end())
+                    {
+                        mDiag.ReportError(
+                            "Unable to resolve output section for symbol '{}'.",
+                            *name);
+                        return false;
+                    }
+
+                    sectionIndex = mapIt->second;
+                    addressOffset = symbol.mAddressOffset;
+                }
+
+                if (sectionIndex >= mSections.size())
+                {
+                    mDiag.ReportError(
+                        "Encountered invalid output section index {} while writing symbol file.",
+                        sectionIndex);
+                    return false;
+                }
+
+                const auto& section = mSections[sectionIndex];
+                const auto absoluteAddress = section.mTargetAddress + addressOffset;
+
+                char type = 'D';
+                switch (section.mType)
+                {
+                    case ProgramSectionType::Code:
+                    case ProgramSectionType::Interrupt:
+                        type = 'C';
+                        break;
+                    case ProgramSectionType::BSS:
+                        type = 'B';
+                        break;
+                    default:
+                        type = 'D';
+                        break;
+                }
+
+                file << '$'
+                     << std::hex << std::uppercase << std::setw(8) << std::setfill('0')
+                     << absoluteAddress
+                     << ' ' << type << ' ' << *name << '\n';
+            }
+        }
+
         return true;
     }
 }

@@ -55,6 +55,7 @@ namespace G10::ASM
 
         auto Link (const std::vector<std::string>& pFiles) -> bool;
         auto SaveImage (const fs::path& pPath) -> bool;
+        auto SaveSymbolFile (const fs::path& pPath) -> bool;
 
     private: // Methods ********************************************************
 

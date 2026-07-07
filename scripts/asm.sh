@@ -28,4 +28,4 @@ done
 
 # Link all object files
 OBJECT_FILES=$(find "$ASM_OUTPUT_FOLDER" -name "*.o" -type f)
-"$ASM_BINARY" -L $OBJECT_FILES -o "./build/bin/$(basename "$1").g10"
+"$ASM_BINARY" -L $OBJECT_FILES -o "./build/bin/$(basename "$1").g10" -s "./build/$(basename "$1").sym"

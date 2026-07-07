@@ -37,6 +37,7 @@ namespace G10::ASM::Tool
     static std::size_t                  sRecursionDepth { kDefaultRecursionDepth };
     static std::string                  sInputFile { "" };
     static std::string                  sOutputFile { "" };
+    static std::string                  sSymbolFile { "" };
     static std::vector<std::string>     sLinkFiles {};
     static std::vector<std::string>     sIncludeDirs {};
     static stx::dictionary<std::string> sDefines {};
@@ -134,6 +135,17 @@ namespace G10::ASM::Tool
 
                 sOutputFile = argv[i++];
             }
+            else if (arg == "-s" || arg == "--symbol-file")
+            {
+                if (i >= argc || std::string { argv[i] }.starts_with('-'))
+                {
+                    std::println(stderr,
+                        "Error: Missing symbol file after '{}'.", arg);
+                    return false;
+                }
+
+                sSymbolFile = argv[i++];
+            }
             else if (arg == "-L" || arg == "--link-file")
             {
                 while (i < argc && std::string { argv[i] }.starts_with('-') == false)
@@ -227,6 +239,7 @@ namespace G10::ASM::Tool
             "Options:\n"
             "  -i <file>, --input-file <file>   Required. Input source file to assemble.\n"
             "  -o <file>, --output-file <file>  Required. Output file to generate.\n"
+            "  -s <file>, --symbol-file <file>  Optional. Symbol file to generate.\n"
             "  -L <files>, --link-files <files> Link object files into an output executable.\n"
             "  -I <dirs>, --include-dirs <dirs> Include directories for preprocessing and binary inclusion.\n"
             "                                   Ignored if '--lex', '--preprocess' or '--parse'\n"
@@ -576,10 +589,19 @@ namespace G10::ASM::Tool
         if (sLinkFiles.empty() == false)
         {
             Linker linker { diag };
-            return (
+            bool ok = (
                 linker.Link(sLinkFiles) &&
                 linker.SaveImage(sOutputFile)
-            ) ? 0 : 1;
+            );
+
+            if (ok == true && sSymbolFile.empty() == false)
+            {
+                linker.SaveSymbolFile(sSymbolFile);
+            }
+
+            debug("Symbol file: '{}'", sSymbolFile);
+            ReportDiagnostic(diag);
+            return (ok == true) ? 0 : 1;
         }
 
         Lexer lex { diag };
