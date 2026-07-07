@@ -1,5 +1,5 @@
 ;
-; @file     hardware.inc
+; @file     g10-boy.hardware.inc
 ; @brief    Contains hardware constant definitions for the G10.Boy.
 ;
 ; @details  Adapted from the Game Boy `hardware.inc`, found here:
