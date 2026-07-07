@@ -12,6 +12,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 #include <G10.Boy.Application.hpp>
+#include <G10.Boy.IniData.hpp>
 
 // Private Macros **************************************************************
 
@@ -297,6 +298,11 @@ namespace G10::Boy
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    
+    #if !defined(G10_CONFIG_DEBUG)
+        io.IniFilename = nullptr;
+        ImGui::LoadIniSettingsFromMemory(kIniData.data(), kIniData.size());
+    #endif
 
         ImGui::StyleColorsDark();
     }
