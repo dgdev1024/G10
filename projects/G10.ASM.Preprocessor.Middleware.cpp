@@ -43,15 +43,6 @@ namespace G10::ASM
     auto Preprocessor::DispatchOrgMiddleware (TokenCursor& pCursor, 
         const SourceLocation& pLocation) -> bool
     {
-        auto value = CollectAndEvaluate(pCursor);
-        if (value.IsUndefined() || value.IsNumeric() == false)
-        {
-            mDiag.ReportError(pLocation, "Expected numeric argument for '.ORG'.");
-            mPendingStatus = PreprocessStatus::Error;
-            return false;
-        }
-
-        mLocationCounter = static_cast<std::int64_t>(value);
         return true;
     }
 

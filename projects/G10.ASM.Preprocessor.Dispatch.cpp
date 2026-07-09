@@ -90,13 +90,16 @@ namespace G10::ASM
     auto Preprocessor::DispatchIdentifier (TokenCursor& pCursor, 
         const Token& pToken) -> bool
     {
-        auto val = CollectAndEvaluate(pCursor);
-        if (val.IsUndefined() == false)
-        {
-            EmitValue(val);
-            return true;
-        }
+        // auto val = CollectAndEvaluate(pCursor);
+        // if (val.IsUndefined() == false)
+        // {
+        //     EmitValue(val);
+        //     return true;
+        // }
 
+        // debug("`DispatchIdentifier`: '{}'", pToken.Stringify().value_or(""));
+
+        auto index = pCursor.GetIndex();
         pCursor.Skip();
         auto lexeme = InterpolateIdentifier(pToken.mLocation,
             pToken.Stringify().value_or(""));
@@ -106,13 +109,42 @@ namespace G10::ASM
         if (auto macroFindIt = mMacros.find(*lexeme);
             macroFindIt != mMacros.end())
         {
+            if (pCursor.ExpectNextToken(TokenType::Colon, false))
+            {
+                mDiag.ReportError(pToken.mLocation, 
+                    "Label name '{}' is defined as a macro.",
+                    *lexeme);
+                mPendingStatus = PreprocessStatus::Error;
+                return false;
+            }
+
             return DispatchMacroCall(pCursor, pToken.mLocation,
                 macroFindIt->second);
         }
         else if (auto snippetFindIt = mSnippets.find(*lexeme);
                  snippetFindIt != mSnippets.end())
         {
+            if (pCursor.ExpectNextToken(TokenType::Colon, false))
+            {
+                mDiag.ReportError(pToken.mLocation, 
+                    "Label name '{}' is defined as a snippet.",
+                    *lexeme);
+                mPendingStatus = PreprocessStatus::Error;
+                return false;
+            }
+
             // debug("Encountered dispatched snippet: '{}'", *lexeme);
+            // for (const auto& tk : snippetFindIt->second.mBody)
+            // {
+            //     debug(" - Token #{}: '{}' '{}', '{}' ({})", 
+            //         pCursor.GetIndex(),
+            //         tk.StringifyGroup(),
+            //         tk.StringifyType(),
+            //         tk.Stringify().value_or(""),
+            //         pCursor.GetIndex()
+            //     );
+            // }
+
             auto status = Preprocess(snippetFindIt->second.mBody);
             if (status == PreprocessStatus::Error)
             {
@@ -124,14 +156,22 @@ namespace G10::ASM
             return true;
         }
 
+        if (mSymbols.contains(*lexeme))
+        {
+            pCursor.SetIndex(index);
+            auto val = CollectAndEvaluate(pCursor);
+            if (val.IsUndefined() == false)
+            {
+                EmitValue(val);
+                return true;
+            }
+        }
+
         // auto val = EvaluateSymbol(*lexeme);
         // if (val.IsUndefined() == false)
         // {
-        //     pCursor.Unskip();
-
-
-        //     // EmitValue(val);
-        //     // return true;
+        //     EmitValue(val);
+        //     return true;
         // }
 
         EmitText(*lexeme + " ");

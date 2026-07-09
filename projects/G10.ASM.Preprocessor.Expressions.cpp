@@ -18,9 +18,11 @@ namespace G10::ASM
         auto        startIndex = pCursor.GetIndex();
         auto        exprSlice = DeepSlice(pCursor.CollectExpression());
 
-        // for (const auto& tk : exprSlice)
+        // for (std::size_t i = 0; i < exprSlice.size(); ++i)
         // {
-        //     // debug(" - Token: '{}' '{}', '{}' ({})", 
+        //     const auto& tk = exprSlice[i];
+        //     debug("`CollectAndEvaluate`: Token #{}: '{}' '{}', '{}' ({})", 
+        //         i,
         //         tk.StringifyGroup(),
         //         tk.StringifyType(),
         //         tk.Stringify().value_or(""),

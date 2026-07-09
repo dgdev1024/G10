@@ -145,6 +145,11 @@ namespace G10::Testbed
         mCore.ReadFlagsRegister(val8);
         std::println(" - FLAGS: 0b{:B}", val8);
 
+        std::println(" - Pending Exception: {}",
+            stx::under(mCore.GetExceptionPending()));
+        std::println(" - Exception: {}",
+            stx::under(mCore.GetException()));
+
         std::println("\nRAM:");
         for (std::size_t i = 0; i < kRAMSize; ++i)
         {

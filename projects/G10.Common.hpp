@@ -564,6 +564,8 @@ namespace stx
         file.seekg(offset, std::ios::beg);
         std::vector<std::uint8_t> buffer(size);
         file.read(reinterpret_cast<char*>(buffer.data()), size);
+
+        debug("Read binary file '{}' (offset {}, size {})", path.string(), offset, size);
         return buffer;
     }
 

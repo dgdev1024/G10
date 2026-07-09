@@ -44,6 +44,7 @@ namespace G10::ASM
             case AssemblerDirective::DWORD:         return DispatchDoubleWordDirective(pLocation, pCursor);
             case AssemblerDirective::ASCIZ:         return DispatchStringDirective(pLocation, pCursor);
             case AssemblerDirective::SPACE:         return DispatchSpaceDirective(pLocation, pCursor);
+            case AssemblerDirective::INCBIN:        return DispatchIncbinDirective(pLocation, pCursor);
             case AssemblerDirective::EXPORT:        return DispatchExportDirective(pLocation, pCursor);
             case AssemblerDirective::IMPORT:        return DispatchImportDirective(pLocation, pCursor);
             case AssemblerDirective::SECTION:       return DispatchSectionDirective(pLocation, pCursor);
@@ -288,8 +289,8 @@ namespace G10::ASM
 
         node->mFilename = filename;
         node->mOffset = offset;
-        
-        node->mLocation = pLocation;node->mSize = size;
+        node->mSize = size;
+        node->mLocation = pLocation;
         mOutput.mNodes.push_back(node);
         return true;
     }
