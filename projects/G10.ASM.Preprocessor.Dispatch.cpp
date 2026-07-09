@@ -273,6 +273,11 @@ namespace G10::ASM
             }
         }
 
+        auto index = pCursor.GetIndex();
+        if (DispatchMiddleware(pCursor, pToken) == false)
+            { return false; }
+        pCursor.SetIndex(index);
+
         pCursor.Skip();
         EmitToken(pToken);
         return true;

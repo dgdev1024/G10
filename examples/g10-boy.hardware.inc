@@ -25,6 +25,17 @@
 .const mQRAM        = $FFFF0000
 .const mIO          = $FFFFFF00
 
+.snippet vram0      = "bss[mVRAM0]"
+.snippet vram1      = "bss[mVRAM1]"
+.snippet bgcpram    = "bss[mBGCPRAM]"
+.snippet objcpram   = "bss[mOBJCPRAM]"
+.snippet oam        = "bss[mOAM]"
+.snippet wavram     = "bss[mWAVRAM]"
+.snippet wram       = "bss[mWRAM]"
+.snippet sram       = "bss[mSRAM]"
+.snippet xpram      = "bss[mXPRAM]"
+.snippet qram       = "bss[mQRAM]"
+
 ; Port Registers - G10 CPU Interrupt Registers *********************************
 
 .const rIE0     = $00

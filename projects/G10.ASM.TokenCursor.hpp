@@ -46,6 +46,10 @@ namespace G10::ASM
             -> stx::optional_ref<const Token>;
         auto PeekToken (std::size_t pOffset) const -> const Token&;
         auto Skip (std::size_t pCount = 1) -> void;
+        auto SkipLine () -> void;
+        auto SkipUntil (TokenType pType) -> bool;
+        auto SkipUntil (TokenGroup pGroup) -> bool;
+        auto SkipUntil (KeywordGroup pGroup) -> bool;
         auto Unskip (std::size_t pCount = 1) -> void;
         auto SkipNewlines () -> void;
         auto CollectLine () -> TokenSlice;

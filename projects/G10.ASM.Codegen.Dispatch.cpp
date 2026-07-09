@@ -631,6 +631,7 @@ namespace G10::ASM
 
     auto Codegen::DispatchCharmapHintDirective (const CharmapHintDirectiveNode& pNode) -> bool
     {
+        // debug("Setting charmap to '{}'", pNode.mName);
         mActiveCharmap = pNode.mName;
         return true;
     }

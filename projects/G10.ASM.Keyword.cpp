@@ -272,6 +272,7 @@ namespace G10::ASM
         { "_DATE", Keyword { PreprocessorBuiltinSymbol::_DATE } },
         { "_TIME", Keyword { PreprocessorBuiltinSymbol::_TIME } },
         { "_VERSION", Keyword { PreprocessorBuiltinSymbol::_VERSION } },
+        { "_LOCATION", Keyword { PreprocessorBuiltinSymbol::_LOCATION } },
         { "_UNIQUE", Keyword { PreprocessorBuiltinSymbol::_UNIQUE } },
         { "_RANDOM32", Keyword { PreprocessorBuiltinSymbol::_RANDOM32 } },
         { "_RANDOM64", Keyword { PreprocessorBuiltinSymbol::_RANDOM64 } },
@@ -878,6 +879,7 @@ namespace G10::ASM
                     case PreprocessorBuiltinSymbol::_TIME: return "_TIME";
                     case PreprocessorBuiltinSymbol::_VERSION: return "_VERSION";
                     case PreprocessorBuiltinSymbol::_UNIQUE: return "_UNIQUE";
+                    case PreprocessorBuiltinSymbol::_LOCATION: return "_LOCATION";
                     case PreprocessorBuiltinSymbol::_RANDOM32: return "_RANDOM32";
                     case PreprocessorBuiltinSymbol::_RANDOM64: return "_RANDOM64";
                     default: return "";

@@ -141,6 +141,11 @@ namespace G10::ASM
             else { return nullptr; }
         }
 
+        inline constexpr auto IsKeyword () const -> bool
+        {
+            return std::holds_alternative<Keyword::Ref>(mContents);
+        }
+
         inline constexpr auto IsInteger () const -> bool
         {
             return

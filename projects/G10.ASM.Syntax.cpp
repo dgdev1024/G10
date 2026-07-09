@@ -52,6 +52,16 @@ namespace G10::ASM
 
     auto BinaryExpressionNode::Stringify (std::size_t pIndent) const -> std::string
     {
+        char op = 0;
+        switch (mOperation)
+        {
+            case TokenType::Plus: op = '+'; break;
+            case TokenType::Minus: op = '-'; break;
+            case TokenType::Times: op = '*'; break;
+            case TokenType::Divide: op = '/'; break;
+            case TokenType::Modulo: op = '%'; break;
+        }
+
         return std::format(
             "{0}BinaryExpression:\n"
             "  Left:\n"
@@ -62,7 +72,7 @@ namespace G10::ASM
             std::string(pIndent * 2, ' '),
             mLeft ? mLeft->Stringify(pIndent + 2) : "",
             mRight ? mRight->Stringify(pIndent + 2) : "",
-            mIsSubtraction ? '-' : '+'
+            op
         );
     }
 

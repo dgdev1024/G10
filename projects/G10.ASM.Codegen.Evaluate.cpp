@@ -167,9 +167,31 @@ namespace G10::ASM
             else
                 { return std::nullopt; }
 
-            return (b->mIsSubtraction == true) ?
-                static_cast<std::uint32_t>((*left) - (*right)) :
-                static_cast<std::uint32_t>((*left) + (*right));
+            if (
+                (
+                    b->mOperation == TokenType::Divide ||
+                    b->mOperation == TokenType::Modulo
+                ) && (*right == 0)
+            )
+            {
+                mDiag.ReportError("Encountered division by zero in binary expression");
+                return std::nullopt;
+            }
+
+            if (b->mOperation == TokenType::Plus)
+                { return *left + *right; }
+            else if (b->mOperation == TokenType::Minus)
+                { return *left - *right; }
+            else if (b->mOperation == TokenType::Times)
+                { return *left * *right; }
+            else if (b->mOperation == TokenType::Divide)
+                { return *left / *right; }
+            else if (b->mOperation == TokenType::Modulo)
+                { return *left % *right; }
+
+            // return (b->mIsSubtraction == true) ?
+            //     static_cast<std::uint32_t>((*left) - (*right)) :
+            //     static_cast<std::uint32_t>((*left) + (*right));
         }
 
         return std::nullopt;

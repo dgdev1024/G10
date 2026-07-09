@@ -309,7 +309,13 @@ namespace G10::ASM
         }
 
         const auto& op = pCursor.GetNextToken();
-        if (op.mType != TokenType::Plus && op.mType != TokenType::Minus)
+        if (
+            op.mType != TokenType::Plus && 
+            op.mType != TokenType::Minus &&
+            op.mType != TokenType::Times &&
+            op.mType != TokenType::Divide &&
+            op.mType != TokenType::Modulo
+        )
         {
             left->mLocation = pLocation;
             return left;
@@ -326,7 +332,7 @@ namespace G10::ASM
         auto binary = std::make_shared<BinaryExpressionNode>();
         binary->mLeft = left;
         binary->mRight = right;
-        binary->mIsSubtraction = (op.mType == TokenType::Minus);
+        binary->mOperation = op.mType;
         binary->mLocation = pLocation;
         return binary;
     }

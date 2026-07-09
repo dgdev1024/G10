@@ -118,6 +118,9 @@ namespace G10::ASM
             case TokenType::NewLine:
             case TokenType::Plus:
             case TokenType::Minus:
+            case TokenType::Times:
+            case TokenType::Divide:
+            case TokenType::Modulo:
             case TokenType::LeftParenthesis:
             case TokenType::RightParenthesis:
             case TokenType::LeftBracket:

@@ -100,6 +100,56 @@ namespace G10::ASM
             { ++mIndex; --pCount; }
     }
 
+    auto TokenCursor::SkipLine () -> void
+    {
+        while (
+            mIndex < mSlice.size() && 
+            mSlice[mIndex].mType != TokenType::NewLine
+        ) { ++mIndex; }
+    }
+
+    auto TokenCursor::SkipUntil (TokenType pType) -> bool
+    {
+        while (
+            mIndex < mSlice.size() &&
+            mSlice[mIndex].mType != pType &&
+            mSlice[mIndex].mType != TokenType::EndOfFile &&
+            mSlice[mIndex].mType != TokenType::NewLine
+        ) { ++mIndex; }
+
+        return (mIndex < mSlice.size() && mSlice[mIndex].mType == pType);
+    }
+
+    auto TokenCursor::SkipUntil (TokenGroup pGroup) -> bool
+    {
+        while (
+            mIndex < mSlice.size() &&
+            mSlice[mIndex].GetGroup() != pGroup &&
+            mSlice[mIndex].mType != TokenType::EndOfFile &&
+            mSlice[mIndex].mType != TokenType::NewLine
+        ) { ++mIndex; }
+
+        return (mIndex < mSlice.size() && mSlice[mIndex].GetGroup() == pGroup);
+    }
+
+    auto TokenCursor::SkipUntil (KeywordGroup pGroup) -> bool
+    {
+        while (
+            mIndex < mSlice.size() &&
+            (
+                mSlice[mIndex].IsKeyword() == false ||
+                mSlice[mIndex].GetKeyword()->GetGroup() != pGroup
+            ) &&
+            mSlice[mIndex].mType != TokenType::EndOfFile &&
+            mSlice[mIndex].mType != TokenType::NewLine
+        ) { ++mIndex; }
+
+        return (
+            mIndex < mSlice.size() && 
+            mSlice[mIndex].IsKeyword() == true && 
+            mSlice[mIndex].GetKeyword()->GetGroup() == pGroup);
+    }
+
     auto TokenCursor::Unskip (std::size_t pCount) -> void
     {
         while (pCount > 0 && mIndex > 0)

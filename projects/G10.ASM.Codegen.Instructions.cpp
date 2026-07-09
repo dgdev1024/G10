@@ -1416,7 +1416,7 @@ namespace G10::ASM
             }
 
             param2 = regIndex2;
-            return EmitOpcode(opcode, param1, param2);
+            return EmitOpcode(opcode + 1, param1, param2);
         }
         else
         {

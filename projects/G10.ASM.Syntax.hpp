@@ -89,7 +89,8 @@ namespace G10::ASM
     {
         std::shared_ptr<ExpressionNode> mLeft {};
         std::shared_ptr<ExpressionNode> mRight {};
-        bool mIsSubtraction { false };
+        TokenType mOperation {};
+        // bool mIsSubtraction { false };
 
     public:
         auto Stringify (std::size_t pIndent = 0) const -> std::string override;

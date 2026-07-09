@@ -634,6 +634,9 @@ namespace G10::ASM
             case PreprocessorBuiltinSymbol::_UNIQUE: {
                 return PreprocessorValue { mUniqueCounter++ };
             } break;
+            case PreprocessorBuiltinSymbol::_LOCATION: {
+                return PreprocessorValue { mLocationCounter };
+            } break;
             case PreprocessorBuiltinSymbol::_RANDOM32: {
                 return PreprocessorValue { GetRandom32() };
             } break;

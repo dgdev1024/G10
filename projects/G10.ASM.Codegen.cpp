@@ -423,6 +423,7 @@ namespace G10::ASM
         
         if (pUseCharmap == true)
         {
+            // debug("Emitting string with charmap '{}'...", mActiveCharmap);
             const auto& activeCharmap = mCharmaps.at(mActiveCharmap);
             std::string str = pString;
             while (str.empty() == false)

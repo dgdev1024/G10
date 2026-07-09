@@ -66,6 +66,7 @@ namespace G10::ASM
         _TIME,
         _VERSION,
         _UNIQUE,
+        _LOCATION,
         _RANDOM32,
         _RANDOM64
     };

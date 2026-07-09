@@ -190,6 +190,17 @@ namespace G10::ASM
         auto DispatchPushCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
         auto DispatchPopCharmap (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
 
+    private: // Methods - Middleware *******************************************
+
+        auto DispatchMiddleware (TokenCursor& pCursor, const Token& pToken) -> bool;
+        auto DispatchOrgMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchSectionMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchByteMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchWordMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchDoubleWordMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchStringMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation) -> bool;
+        auto DispatchInstructionMiddleware (TokenCursor& pCursor, const SourceLocation& pLocation, CPU::InstructionType pInst) -> bool;
+
     private: // Methods - Expressions - Helpers ********************************
 
         auto CollectAndEvaluate (TokenCursor& pCursor) -> PreprocessorValue;
@@ -261,6 +272,7 @@ namespace G10::ASM
         std::size_t         mIncludeDepth               { 0 };
         std::size_t         mRecursionDepth             { 0 };
         std::int64_t        mUniqueCounter              { 1 };
+        std::int64_t        mLocationCounter            { 0 };
         PreprocessStatus    mPendingStatus              { PreprocessStatus::OK };
         bool                mPassthroughExpr            { false };
 
