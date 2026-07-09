@@ -235,6 +235,7 @@ namespace G10::ASM
         { "JR", Keyword { CPU::InstructionType::JPB } },
         { "RST", Keyword { CPU::InstructionType::INT } },
         { "CPL", Keyword { CPU::InstructionType::NOT } },
+        { "CP", Keyword { CPU::InstructionType::CMP } },
         { "SAL", Keyword { CPU::InstructionType::SLA } },
         { "SAR", Keyword { CPU::InstructionType::SRA } },
         { "SHR", Keyword { CPU::InstructionType::SRL } },
