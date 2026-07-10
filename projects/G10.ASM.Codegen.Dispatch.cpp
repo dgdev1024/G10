@@ -323,6 +323,10 @@ namespace G10::ASM
             {
                 count += *i;
             }
+            else if (const auto b = EvaluateBinaryExpression(operand))
+            {
+                count += *b;
+            }
             else
             {
                 mDiag.ReportError(pNode.mLocation, "'.SPACE' directive: Invalid operand.");

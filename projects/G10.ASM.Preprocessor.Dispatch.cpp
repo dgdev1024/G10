@@ -680,8 +680,6 @@ namespace G10::ASM
             .mLocation      = pLocation
         };
 
-        // debug("Defined constant '{}' = {}", *nameLexeme, exprValue.EmitString());
-
         return true;
     }
 }
@@ -1002,6 +1000,15 @@ namespace G10::ASM
                 .mLocation      = nameToken->mLocation
             }
         );
+        if (inserted == false)
+        {
+            mDiag.ReportError(pLocation, 
+                "Start variable in '.FOR' loop, '{}', is already defined.", *name);
+            mDiag.ReportInfo(startVarIter->second.mLocation,
+                " - Previously defined here.");
+            return false;
+        }
+
         auto& startVar = startVarIter->second.mValue;
         if (startVar.IsNumeric() == false)
         {
@@ -1037,7 +1044,7 @@ namespace G10::ASM
                 "Exceeded the loop depth limit of '{}'.", mLimitLoopDepth);
             return false;
         } else { mLoopDepth++; }
-
+        
         while (true)
         {
             // First, check to see if we need to exit the loop.
@@ -1053,6 +1060,11 @@ namespace G10::ASM
                 (stepValue > kZero && startVar >= endValue) ||
                 (stepValue < kZero && startVar <= endValue)
             ) { break; }
+
+            // debug("For Loop Iteration: {}, {}, {}",
+            //     *startVar.GetInteger(),
+            //     *endValue.GetInteger(),
+            //     *stepValue.GetInteger());
 
             // At this point, carry out our loop.
             auto status = Preprocess(bodySlice);
@@ -1367,7 +1379,7 @@ namespace G10::ASM
         if (status == PreprocessStatus::Error)
         {
             mDiag.ReportInfo(pLocation,
-                "In invocation of macro '{}'.", pMacro.mName);
+                " - In invocation of macro '{}'.", pMacro.mName);
         }
 
         mMacroCallStack.pop_back();
@@ -1511,7 +1523,7 @@ namespace G10::ASM
         Lexer lexer { mDiag };
         if (lexer.LexFile(resolved, false) == false)
         {
-            mDiag.ReportInfo(pLocation, "Lexing include file '{}'.",
+            mDiag.ReportInfo(pLocation, " - Lexing include file '{}'.",
                 resolved.string());
             return false;
         }
@@ -1529,7 +1541,7 @@ namespace G10::ASM
         auto status = Preprocess(lexer.GetTokens());
         if (status == PreprocessStatus::Error)
         {
-            mDiag.ReportInfo(pLocation, "In included source file '{}'.",
+            mDiag.ReportInfo(pLocation, " - In included source file '{}'.",
                 resolved.string());
         }
         else

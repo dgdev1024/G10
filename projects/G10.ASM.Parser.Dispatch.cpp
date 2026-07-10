@@ -230,11 +230,15 @@ namespace G10::ASM
                 return false;
             }
 
-            if (std::dynamic_pointer_cast<IntegerExpressionNode>(expr) == nullptr)
+            if (
+                std::dynamic_pointer_cast<IntegerExpressionNode>(expr) == nullptr &&
+                std::dynamic_pointer_cast<LabelExpressionNode>(expr) == nullptr &&
+                std::dynamic_pointer_cast<BinaryExpressionNode>(expr) == nullptr
+            )
             {
                 mDiag.ReportError(pLocation,
-                    "Expected integer in '.SPACE' directive.",
-                    token.StringifyType());
+                    "Expected integer or label in '.SPACE' directive. '{}'",
+                    expr->Stringify());
                 return false;
             }
 
@@ -481,6 +485,7 @@ namespace G10::ASM
         auto node = std::make_shared<LabelStatementNode>();
         node->mLocation = pLocation;
         node->mLabelExpr = *expr;
+        // debug("Found label '{}'", node->mLabelExpr.mSymbol);
 
         if (pCursor.ExpectNextToken(TokenType::Colon))
         {

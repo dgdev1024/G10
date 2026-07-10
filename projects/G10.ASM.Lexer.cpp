@@ -253,9 +253,7 @@ namespace G10::ASM
                     { break; }
 
                 if (
-                    lexeme.size() < 2 || 
-                    lexeme[lexeme.size() - 2] != '{' ||
-                    std::isalpha(lexeme.back()) == 0
+                    lexeme.size() < 2
                 )
                 {
                     mDiag.ReportError(mLocation,

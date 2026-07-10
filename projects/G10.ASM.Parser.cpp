@@ -29,6 +29,10 @@ namespace G10::ASM
         {
             cursor.SkipNewlines();
             const auto& token = cursor.GetNextToken();
+            // debug("Parsing token: '{}' ({}, {})", 
+            //     token.Stringify().value_or(""),
+            //     cursor.GetIndex(),
+            //     token.mLocation.ToString());
             if (const auto kw = token.GetKeyword())
             {
                 cursor.Skip();

@@ -656,9 +656,9 @@ namespace G10::ASM
 namespace G10::ASM
 {
     static auto FormatInterpolation (const PreprocessorValue& pValue,
-        const char pFormat) -> std::string
+        const std::string& pFormat) -> std::string
     {
-        if (pFormat == 's' || pFormat == '\0')
+        if (pFormat == "s" || pFormat == "")
         {
             if (const auto str = pValue.GetString())
                 { return *str; }
@@ -677,13 +677,16 @@ namespace G10::ASM
         else if (const auto fp = pValue.GetFixedPoint())
             { val = fp->Correct().GetInteger(); }
 
-        switch (pFormat)
+        switch (pFormat.back())
         {
-            case 'd': return std::format("{}", val);
-            case 'x': return std::format("{:x}", val);
-            case 'X': return std::format("{:X}", val);
-            case 'o': return std::format("{:o}", val);
-            case 'b': return std::format("{:b}", val);
+            case 'd': 
+            case 'x': 
+            case 'X': 
+            case 'o': 
+            case 'b': {
+                std::string formatString = std::format("{{:{}}}", pFormat);
+                return std::vformat(formatString, std::make_format_args(val));
+            }
             default: return std::to_string(val);  
         }
     }
@@ -724,16 +727,31 @@ namespace G10::ASM
             index++;
 
             // Interpolation strings may begin with an optional format specifier,
-            // which consists of one character followed by a colon. If one is
-            // not present, then the default specifier, 's', is used.
-            char format = 's';
-            if (index + 1 < pText.size() &&
-                std::isalpha(pText[index]) &&
-                pText[index + 1] == ':')
+            // which consists of one or more characters followed by a colon. If
+            // not present, then the default specifier string, "s", is used.
+            std::string format = "s";
+            if (auto findColon = pText.find(':', index);
+                findColon != std::string::npos &&
+                pText.find('}', index) > findColon)
             {
-                format = pText[index];
-                index += 2;
+                format = pText.substr(index, findColon - index);
+                if (format.empty())
+                {
+                    mDiag.ReportError(pLocation, 
+                        "Empty format specifier in string interpolation.");
+                    return std::nullopt;
+                }
+
+                index = findColon + 1;
             }
+
+            // if (index + 1 < pText.size() &&
+            //     std::isalpha(pText[index]) &&
+            //     pText[index + 1] == ':')
+            // {
+            //     format = pText[index];
+            //     index += 2;
+            // }
 
             // Collect the text of the interpolation until the closing '}'.
             std::size_t depthCount = 1;
@@ -781,19 +799,30 @@ namespace G10::ASM
                 return std::nullopt;
             }
 
-            std::string formatted = FormatInterpolation(value, format);
-            
-            // If our formatted string contains a brace, then there may be
-            // further interpolations therein.
-            if (formatted.find('{') != std::string::npos)
+            try
             {
-                auto nested = InterpolateString(pLocation, formatted, pDepth + 1);
-                if (nested.has_value() == false)
-                    { return std::nullopt; }
-                formatted = *nested;
+                std::string formatted = FormatInterpolation(value, format);
+                
+                // If our formatted string contains a brace, then there may be
+                // further interpolations therein.
+                if (formatted.find('{') != std::string::npos)
+                {
+                    auto nested = InterpolateString(pLocation, formatted, pDepth + 1);
+                    if (nested.has_value() == false)
+                        { return std::nullopt; }
+                    formatted = *nested;
+                }
+    
+                result += formatted;
             }
-
-            result += formatted;
+            catch (const std::exception& ex)
+            {
+                mDiag.ReportError(pLocation,
+                    "Exception formatting interpolation in string.");
+                mDiag.ReportInfo(pLocation,
+                    " - '{}'", ex.what());
+                return std::nullopt;
+            }
         }
 
         return result;
@@ -818,16 +847,32 @@ namespace G10::ASM
             // escaped braces.
             if (pText[index] != '{')
                 { result += pText[index++]; continue; }
+            // debug("Found interpolation in identifier '{}' at index {}", pText, index);
             index++;
 
-            char format = 's';
-            if (index + 1 < pText.size() &&
-                std::isalpha(pText[index]) &&
-                pText[index + 1] == ':')
+            std::string format = "s";
+            if (auto findColon = pText.find(':', index);
+                findColon != std::string::npos &&
+                pText.find('}', index) > findColon)
             {
-                format = pText[index];
-                index += 2;
+                format = pText.substr(index, findColon - index);
+                if (format.empty())
+                {
+                    mDiag.ReportError(pLocation,
+                        "Empty format specifier in identifier interpolation.");
+                    return std::nullopt;
+                }
+
+                index = findColon + 1;
             }
+
+            // if (index + 1 < pText.size() &&
+            //     std::isalpha(pText[index]) &&
+            //     pText[index + 1] == ':')
+            // {
+            //     format = pText[index];
+            //     index += 2;
+            // }
 
             std::size_t depthCount = 1;
             std::string interpolation = "";
@@ -871,16 +916,34 @@ namespace G10::ASM
                 return std::nullopt;
             }
 
-            std::string formatted = FormatInterpolation(value, format);
-            if (formatted.find('{') != std::string::npos)
+            try
             {
-                auto nested = InterpolateIdentifier(pLocation, formatted, pDepth + 1);
-                if (nested.has_value() == false)
-                    { return std::nullopt; }
-                formatted = *nested;
+                std::string formatted = FormatInterpolation(value, format);
+                // debug("String so far: '{}'", result);
+                // debug("Formatted interpolation: '{}'", formatted);
+                if (formatted.find('{') != std::string::npos)
+                {
+                    auto nested = InterpolateIdentifier(pLocation, formatted, pDepth + 1);
+                    if (nested.has_value() == false)
+                        { return std::nullopt; }
+                    formatted = *nested;
+                }
+                result += formatted;
             }
-            result += formatted;
+            catch (const std::exception& ex)
+            {
+                mDiag.ReportError(pLocation,
+                    "Exception formatting interpolation in identifier.");
+                mDiag.ReportInfo(pLocation,
+                    " - '{}'", ex.what());
+                return std::nullopt;
+            }
         }
+
+        // if (result != pText)
+        // {
+        //     debug("Result: '{}'", result);
+        // }
 
         return result;
     }

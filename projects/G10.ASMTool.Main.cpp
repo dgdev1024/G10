@@ -318,9 +318,12 @@ namespace G10::ASM::Tool
     static auto ReportLex (const Lexer& lex) -> void
     {
         const auto& tokens = lex.GetTokens();
-        for (const auto& token : tokens)
+        for (std::size_t i = 0; i < tokens.size(); ++i)
         {
-            std::print(" - {}: {}", token.mLocation.ToString(),
+            const auto& token = tokens[i];
+            std::print(" - {}. {}: {}", 
+                i,
+                token.mLocation.ToString(),
                 token.StringifyType());
 
             switch (token.mType)
@@ -621,7 +624,7 @@ namespace G10::ASM::Tool
             ReportDiagnostic(diag);
             return 1;
         }
-        else if (sLex == true && sOutputPreprocess == false)
+        else if (sLex == true && sPreprocessOnly == false)
         {
             ReportLex(lex);
             return 0;
@@ -632,14 +635,9 @@ namespace G10::ASM::Tool
             ReportDiagnostic(diag);
             return 1;
         }
-        else if (sLex == false && sOutputPreprocess == true)
+        else if (sLex == false && sPreprocessOnly == true)
         {
             ReportPreprocess(pp);
-            return 0;
-        }
-
-        if (sPreprocessOnly == true)
-        {
             return 0;
         }
 
@@ -648,7 +646,7 @@ namespace G10::ASM::Tool
             ReportDiagnostic(diag);
             return 1;
         }
-        else if (sLex == true && sOutputPreprocess == true)
+        else if (sLex == true && sPreprocessOnly == true)
         {
             ReportLex(lex);
             return 0;
